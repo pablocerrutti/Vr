@@ -1,0 +1,10 @@
+{
+  "name": "NightVision VR",
+  "short_name": "NightVision",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#050805",
+  "icons": []
+}
