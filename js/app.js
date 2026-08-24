@@ -20,13 +20,15 @@ let torch = false;
 /* =========================================
    CONFIGURACIÓN
    ========================================= */
-
 const state = {
   brightness: 1.2,
   contrast: 1.35,
   gain: 1,
   zoom: 0.8
 };
+
+console.log("NIGHTVISION APP NUEVA - ZOOM 0.8");
+alert("APP NUEVA - ZOOM 0.8");
 
 
 /* =========================================
