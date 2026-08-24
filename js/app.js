@@ -1,6 +1,6 @@
 /* =========================================================
    LONWOLF NIGHTVISION VR
-   APP.JS V8
+   V9
    ========================================================= */
 
 const video =
@@ -20,25 +20,22 @@ const $ =
 let stream = null;
 let track = null;
 
-let animationFrame = 0;
+let raf = 0;
 
 let lastFrame = 0;
-let fpsCounter = 0;
 let fpsTime = performance.now();
+let frames = 0;
 
 const TARGET_FPS = 30;
 const FRAME_TIME = 1000 / TARGET_FPS;
 
 let mode = 0;
+
 let vr = false;
-let cross = true;
+let reticle = true;
+let scale = true;
 let mirror = false;
 let torch = false;
-
-let motionActive = false;
-
-let pitch = 0;
-let calibratedPitch = 0;
 
 
 /* =========================================================
@@ -50,14 +47,13 @@ const state = {
   brightness: 1.2,
   contrast: 1.35,
   gain: 1,
-  zoom: 0.8,
-  height: 1.65
+  zoom: 0.8
 
 };
 
 
 /* =========================================================
-   LOCAL STORAGE
+   CARGAR CONFIGURACIÓN
    ========================================================= */
 
 function loadState() {
@@ -66,7 +62,7 @@ function loadState() {
 
     const saved =
       localStorage.getItem(
-        "lonwolf_nv_v8"
+        "lonwolf-v9"
       );
 
     if (saved) {
@@ -95,16 +91,6 @@ function loadState() {
     );
 
 
-  state.height =
-    Math.max(
-      0.5,
-      Math.min(
-        2.5,
-        Number(state.height) || 1.65
-      )
-    );
-
-
   updateControls();
 
 }
@@ -115,7 +101,7 @@ function saveState() {
   try {
 
     localStorage.setItem(
-      "lonwolf_nv_v8",
+      "lonwolf-v9",
       JSON.stringify(state)
     );
 
@@ -141,8 +127,6 @@ const gl =
       depth: false,
       stencil: false,
 
-      preserveDrawingBuffer: false,
-
       powerPreference:
         "high-performance"
 
@@ -153,7 +137,7 @@ const gl =
 if (!gl) {
 
   alert(
-    "WebGL no está disponible."
+    "Este navegador no dispone de WebGL."
   );
 
   throw new Error(
@@ -213,7 +197,6 @@ uniform vec2 u_outputAspect;
 
 varying vec2 v_texCoord;
 
-
 void main() {
 
   vec2 uv =
@@ -221,12 +204,7 @@ void main() {
 
 
   /*
-     CORRECCIÓN DE ORIENTACIÓN
-
-     La textura proveniente de Safari/WebGL
-     se invierte verticalmente aquí.
-
-     Esto evita utilizar UNPACK_FLIP_Y_WEBGL.
+     CORRECCIÓN VERTICAL
   */
 
   uv.y =
@@ -260,7 +238,7 @@ void main() {
     u_outputAspect.y;
 
 
-  vec2 centered =
+  vec2 p =
     uv - 0.5;
 
 
@@ -269,13 +247,13 @@ void main() {
     outputRatio
   ) {
 
-    centered.x *=
+    p.x *=
       outputRatio /
       sourceRatio;
 
   } else {
 
-    centered.y *=
+    p.y *=
       sourceRatio /
       outputRatio;
 
@@ -285,11 +263,10 @@ void main() {
   /*
      ZOOM
 
-     0.8 = campo ligeramente
-     más amplio que 1.0
+     0.8 mínimo
   */
 
-  centered /=
+  p /=
     max(
       0.8,
       u_zoom
@@ -297,7 +274,7 @@ void main() {
 
 
   uv =
-    centered + 0.5;
+    p + 0.5;
 
 
   uv =
@@ -309,7 +286,7 @@ void main() {
 
 
   /*
-     FRAME
+     IMAGEN
   */
 
   vec3 color =
@@ -346,7 +323,7 @@ void main() {
 
 
   /*
-     BRILLO
+     BRILLO / GANANCIA
   */
 
   y *=
@@ -363,7 +340,7 @@ void main() {
 
 
   /*
-     MODO VERDE
+     VERDE
   */
 
   if (
@@ -414,20 +391,6 @@ void main() {
 
   /*
      TÉRMICO SIMULADO
-
-     negro
-       ↓
-     azul
-       ↓
-     violeta
-       ↓
-     rojo
-       ↓
-     naranja
-       ↓
-     amarillo
-       ↓
-     blanco
   */
 
   else if (
@@ -453,7 +416,8 @@ void main() {
     else if (y < 0.40) {
 
       float t =
-        (y - 0.20) / 0.20;
+        (y - 0.20) /
+        0.20;
 
       r = t;
       g = 0.0;
@@ -464,7 +428,8 @@ void main() {
     else if (y < 0.60) {
 
       float t =
-        (y - 0.40) / 0.20;
+        (y - 0.40) /
+        0.20;
 
       r = 1.0;
       g = 0.0;
@@ -475,7 +440,8 @@ void main() {
     else if (y < 0.78) {
 
       float t =
-        (y - 0.60) / 0.18;
+        (y - 0.60) /
+        0.18;
 
       r = 1.0;
       g = t;
@@ -486,7 +452,8 @@ void main() {
     else {
 
       float t =
-        (y - 0.78) / 0.22;
+        (y - 0.78) /
+        0.22;
 
       r = 1.0;
       g = 1.0;
@@ -511,11 +478,10 @@ void main() {
 
   else {
 
-    float inv =
-      1.0 - y;
-
     color =
-      vec3(inv);
+      vec3(
+        1.0 - y
+      );
 
   }
 
@@ -532,7 +498,7 @@ void main() {
 
 
 /* =========================================================
-   COMPILAR SHADER
+   SHADER
    ========================================================= */
 
 function compileShader(
@@ -552,6 +518,7 @@ function compileShader(
     shader
   );
 
+
   if (
     !gl.getShaderParameter(
       shader,
@@ -566,10 +533,11 @@ function compileShader(
     );
 
     throw new Error(
-      "Error compilando WebGL."
+      "Error WebGL."
     );
 
   }
+
 
   return shader;
 
@@ -590,12 +558,9 @@ const fragmentShader =
   );
 
 
-/* =========================================================
-   PROGRAMA
-   ========================================================= */
-
 const program =
   gl.createProgram();
+
 
 gl.attachShader(
   program,
@@ -611,26 +576,14 @@ gl.linkProgram(
   program
 );
 
-if (
-  !gl.getProgramParameter(
-    program,
-    gl.LINK_STATUS
-  )
-) {
 
-  throw new Error(
-    gl.getProgramInfoLog(
-      program
-    )
-  );
-
-}
-
-gl.useProgram(program);
+gl.useProgram(
+  program
+);
 
 
 /* =========================================================
-   POSICIONES
+   GEOMETRÍA
    ========================================================= */
 
 const positionBuffer =
@@ -641,19 +594,20 @@ gl.bindBuffer(
   positionBuffer
 );
 
+
 gl.bufferData(
 
   gl.ARRAY_BUFFER,
 
   new Float32Array([
 
-    -1, -1,
-     1, -1,
-    -1,  1,
+    -1,-1,
+     1,-1,
+    -1, 1,
 
-    -1,  1,
-     1, -1,
-     1,  1
+    -1, 1,
+     1,-1,
+     1, 1
 
   ]),
 
@@ -668,9 +622,11 @@ const positionLocation =
     "a_position"
   );
 
+
 gl.enableVertexAttribArray(
   positionLocation
 );
+
 
 gl.vertexAttribPointer(
   positionLocation,
@@ -684,8 +640,6 @@ gl.vertexAttribPointer(
 
 /* =========================================================
    TEXTURA
-
-   SIN UNPACK_FLIP_Y_WEBGL
    ========================================================= */
 
 const texCoordBuffer =
@@ -696,19 +650,20 @@ gl.bindBuffer(
   texCoordBuffer
 );
 
+
 gl.bufferData(
 
   gl.ARRAY_BUFFER,
 
   new Float32Array([
 
-    0, 0,
-    1, 0,
-    0, 1,
+    0,0,
+    1,0,
+    0,1,
 
-    0, 1,
-    1, 0,
-    1, 1
+    0,1,
+    1,0,
+    1,1
 
   ]),
 
@@ -723,9 +678,11 @@ const texCoordLocation =
     "a_texCoord"
   );
 
+
 gl.enableVertexAttribArray(
   texCoordLocation
 );
+
 
 gl.vertexAttribPointer(
   texCoordLocation,
@@ -744,10 +701,12 @@ gl.vertexAttribPointer(
 const cameraTexture =
   gl.createTexture();
 
+
 gl.bindTexture(
   gl.TEXTURE_2D,
   cameraTexture
 );
+
 
 gl.texParameteri(
   gl.TEXTURE_2D,
@@ -778,7 +737,7 @@ gl.texParameteri(
    UNIFORMS
    ========================================================= */
 
-const u = {
+const uniforms = {
 
   texture:
     gl.getUniformLocation(
@@ -838,7 +797,7 @@ const u = {
 
 
 gl.uniform1i(
-  u.texture,
+  uniforms.texture,
   0
 );
 
@@ -858,15 +817,13 @@ function resize() {
 
   canvas.width =
     Math.floor(
-      window.innerWidth *
-      dpr
+      window.innerWidth * dpr
     );
 
 
   canvas.height =
     Math.floor(
-      window.innerHeight *
-      dpr
+      window.innerHeight * dpr
     );
 
 
@@ -884,6 +841,7 @@ window.addEventListener(
   "resize",
   resize
 );
+
 
 resize();
 
@@ -948,32 +906,27 @@ async function startCamera() {
 
 
     track =
-      stream.getVideoTracks()[0];
+      stream
+        .getVideoTracks()[0];
 
 
     try {
 
-      await track.applyConstraints({
+      await track
+        .applyConstraints({
 
-        frameRate: {
-          ideal: 30,
-          max: 30
-        }
+          frameRate: {
+            ideal: 30,
+            max: 30
+          }
 
-      });
+        });
 
-    } catch (e) {
-
-      console.warn(
-        "No se pudo fijar 30 FPS",
-        e
-      );
-
-    }
+    } catch (e) {}
 
 
     $("startPanel")
-      ?.classList
+      .classList
       .add("hidden");
 
 
@@ -982,21 +935,20 @@ async function startCamera() {
       "CÁMARA ACTIVA";
 
 
-    lastFrame =
-      performance.now();
-
     fpsTime =
       performance.now();
 
-    fpsCounter = 0;
+    frames = 0;
+
+    lastFrame = 0;
 
 
     cancelAnimationFrame(
-      animationFrame
+      raf
     );
 
 
-    animationFrame =
+    raf =
       requestAnimationFrame(
         render
       );
@@ -1040,6 +992,7 @@ function drawFrame() {
     gl.TEXTURE0
   );
 
+
   gl.bindTexture(
     gl.TEXTURE_2D,
     cameraTexture
@@ -1049,52 +1002,64 @@ function drawFrame() {
   gl.texImage2D(
 
     gl.TEXTURE_2D,
+
     0,
+
     gl.RGBA,
+
     gl.RGBA,
+
     gl.UNSIGNED_BYTE,
+
     video
 
   );
 
 
   gl.uniform1f(
-    u.brightness,
+    uniforms.brightness,
     state.brightness
   );
 
+
   gl.uniform1f(
-    u.contrast,
+    uniforms.contrast,
     state.contrast
   );
 
+
   gl.uniform1f(
-    u.gain,
+    uniforms.gain,
     state.gain
   );
 
+
   gl.uniform1f(
-    u.zoom,
+    uniforms.zoom,
     Math.max(
       0.8,
       state.zoom
     )
   );
 
+
   gl.uniform1f(
-    u.mode,
+    uniforms.mode,
     mode
   );
 
+
   gl.uniform1f(
-    u.mirror,
-    mirror ? 1 : 0
+    uniforms.mirror,
+    mirror
+      ? 1
+      : 0
   );
 
 
   gl.uniform2f(
 
-    u.sourceAspect,
+    uniforms.sourceAspect,
 
     video.videoWidth,
     video.videoHeight
@@ -1109,14 +1074,11 @@ function drawFrame() {
     1
   );
 
+
   gl.clear(
     gl.COLOR_BUFFER_BIT
   );
 
-
-  /*
-     VR
-  */
 
   if (vr) {
 
@@ -1133,7 +1095,7 @@ function drawFrame() {
 
 
     gl.uniform2f(
-      u.outputAspect,
+      uniforms.outputAspect,
       half,
       canvas.height
     );
@@ -1160,8 +1122,9 @@ function drawFrame() {
       6
     );
 
+  }
 
-  } else {
+  else {
 
     gl.viewport(
       0,
@@ -1172,7 +1135,7 @@ function drawFrame() {
 
 
     gl.uniform2f(
-      u.outputAspect,
+      uniforms.outputAspect,
       canvas.width,
       canvas.height
     );
@@ -1202,7 +1165,7 @@ function render(timestamp) {
 
     drawFrame();
 
-    fpsCounter++;
+    frames++;
 
   }
 
@@ -1213,11 +1176,13 @@ function render(timestamp) {
     1000
   ) {
 
-    $("fps").textContent =
-      fpsCounter +
+    $("fps")
+      .textContent =
+      frames +
       " FPS";
 
-    fpsCounter = 0;
+
+    frames = 0;
 
     fpsTime =
       timestamp;
@@ -1225,7 +1190,7 @@ function render(timestamp) {
   }
 
 
-  animationFrame =
+  raf =
     requestAnimationFrame(
       render
     );
@@ -1239,48 +1204,35 @@ function render(timestamp) {
 
 function updateControls() {
 
-  if ($("brightness"))
-    $("brightness").value =
-      state.brightness;
+  $("brightness").value =
+    state.brightness;
 
-  if ($("contrast"))
-    $("contrast").value =
-      state.contrast;
+  $("contrast").value =
+    state.contrast;
 
-  if ($("gain"))
-    $("gain").value =
-      state.gain;
+  $("gain").value =
+    state.gain;
 
-  if ($("zoom"))
-    $("zoom").value =
-      state.zoom;
-
-  if ($("height"))
-    $("height").value =
-      state.height;
+  $("zoom").value =
+    state.zoom;
 
 
-  if ($("brightnessOut"))
-    $("brightnessOut").textContent =
-      state.brightness.toFixed(2);
+  $("brightnessOut")
+    .textContent =
+    state.brightness.toFixed(2);
 
-  if ($("contrastOut"))
-    $("contrastOut").textContent =
-      state.contrast.toFixed(2);
+  $("contrastOut")
+    .textContent =
+    state.contrast.toFixed(2);
 
-  if ($("gainOut"))
-    $("gainOut").textContent =
-      state.gain.toFixed(2);
+  $("gainOut")
+    .textContent =
+    state.gain.toFixed(2);
 
-  if ($("zoomOut"))
-    $("zoomOut").textContent =
-      state.zoom.toFixed(1) +
-      "×";
-
-  if ($("heightOut"))
-    $("heightOut").textContent =
-      state.height.toFixed(2) +
-      " m";
+  $("zoomOut")
+    .textContent =
+    state.zoom.toFixed(1) +
+    "×";
 
 }
 
@@ -1289,12 +1241,11 @@ function updateControls() {
   "brightness",
   "contrast",
   "gain",
-  "zoom",
-  "height"
+  "zoom"
 
 ].forEach(id => {
 
-  $(id)?.addEventListener(
+  $(id).addEventListener(
     "input",
     () => {
 
@@ -1311,16 +1262,14 @@ function updateControls() {
         state.zoom =
           Math.max(
             0.8,
-            Math.min(
-              4,
-              state.zoom
-            )
+            state.zoom
           );
 
       }
 
 
       updateControls();
+
       saveState();
 
     }
@@ -1330,28 +1279,28 @@ function updateControls() {
 
 
 /* =========================================================
-   RETÍCULAS
+   RETÍCULA
    ========================================================= */
 
-function updateCrosshair() {
+function updateReticle() {
 
-  const left =
-    document.querySelector(
-      ".crosshair-eye.left"
+  const normal =
+    document.getElementById(
+      "normalReticle"
     );
 
-  const right =
-    document.querySelector(
-      ".crosshair-eye.right"
+  const vrElement =
+    document.getElementById(
+      "vrReticle"
     );
 
 
-  if (!cross) {
+  if (!reticle) {
 
-    left.style.display =
+    normal.style.display =
       "none";
 
-    right.style.display =
+    vrElement.style.display =
       "none";
 
     return;
@@ -1361,30 +1310,58 @@ function updateCrosshair() {
 
   if (vr) {
 
-    left.style.display =
-      "";
+    normal.style.display =
+      "none";
 
-    right.style.display =
-      "";
+    vrElement.style.display =
+      scale
+        ? "block"
+        : "block";
 
-  } else {
+  }
 
-    left.style.display =
-      "";
+  else {
 
-    right.style.display =
+    normal.style.display =
+      "block";
+
+    vrElement.style.display =
       "none";
 
   }
 
+
+  document.getElementById(
+    "rangeScale"
+  ).style.display =
+    scale
+      ? "block"
+      : "none";
+
+
+  document
+    .querySelectorAll(
+      ".vr-scale"
+    )
+    .forEach(
+      element => {
+
+        element.style.display =
+          scale
+            ? "block"
+            : "none";
+
+      }
+    );
+
 }
 
 
-updateCrosshair();
+updateReticle();
 
 
 /* =========================================================
-   CAMBIO DE MODO
+   MODOS
    ========================================================= */
 
 function setMode() {
@@ -1427,623 +1404,315 @@ function setMode() {
     .textContent =
     labels[mode];
 
-}
 
-
-/* =========================================================
-   SENSORES
-   ========================================================= */
-
-async function enableMotion() {
-
-  try {
-
-    /*
-       iPhone / iOS
-    */
-
-    if (
-      typeof DeviceOrientationEvent
-        .requestPermission ===
-      "function"
-    ) {
-
-      const permission =
-        await DeviceOrientationEvent
-          .requestPermission();
-
-
-      if (
-        permission !==
-        "granted"
-      ) {
-
-        throw new Error(
-          "Permiso de sensores rechazado."
-        );
-
-      }
-
-    }
-
-
-    window.addEventListener(
-      "deviceorientation",
-      handleOrientation,
-      true
-    );
-
-
-    motionActive = true;
-
-
-    $("status")
-      .textContent =
-      "SENSORES ACTIVOS";
-
-
-  } catch (e) {
-
-    console.error(e);
-
-    alert(
-      e.message ||
-      "No se pudieron activar los sensores."
-    );
-
-  }
-
-}
-
-
-function handleOrientation(event) {
-
-  /*
-     beta:
-     inclinación frontal.
-
-     gamma:
-     inclinación lateral.
-  */
-
-  if (
-    typeof event.beta !==
-    "number"
-  ) {
-
-    return;
-
-  }
-
-
-  /*
-     Convertimos beta en
-     inclinación relativa.
-
-     La calibración permite
-     definir qué posición
-     consideramos horizontal.
-  */
-
-  pitch =
-    event.beta -
-    calibratedPitch;
-
-}
-
-
-/* =========================================================
-   CALIBRAR HORIZONTAL
-   ========================================================= */
-
-function calibrateHorizontal() {
-
-  if (!motionActive) {
-
-    alert(
-      "Primero activa los sensores."
-    );
-
-    return;
-
-  }
-
-
-  /*
-     Tomamos la posición
-     actual como horizontal.
-  */
-
-  calibratedPitch =
-    pitch +
-    calibratedPitch;
-
-
-  pitch = 0;
-
-
-  alert(
-    "Horizontal calibrada.\n\n" +
-    "Mantén el teléfono en la posición " +
-    "que deseas utilizar como referencia."
-  );
-
-}
-
-
-/* =========================================================
-   MEDICIÓN
-   ========================================================= */
-
-function measureDistance() {
-
-  if (!motionActive) {
-
-    alert(
-      "Activa primero los sensores."
-    );
-
-    return;
-
-  }
-
-
-  /*
-     Ángulo respecto de horizontal.
-  */
-
-  const angle =
-    Math.abs(pitch);
-
-
-  /*
-     Si el ángulo es demasiado pequeño,
-     la distancia tendería a infinito.
-  */
-
-  if (
-    angle < 0.15
-  ) {
-
-    showDistance(
-      null,
-      pitch
-    );
-
-    return;
-
-  }
-
-
-  /*
-     CONVERSIÓN A RADIANES
-  */
-
-  const radians =
-    angle *
-    Math.PI /
-    180;
-
-
-  /*
-     D = H / tan(theta)
-  */
-
-  let distance =
-    state.height /
-    Math.tan(radians);
-
-
-  /*
-     Limitar valores extremos
-  */
-
-  if (
-    !Number.isFinite(distance)
-  ) {
-
-    distance = null;
-
-  }
-
-
-  if (
-    distance !== null &&
-    distance > 1000
-  ) {
-
-    distance = null;
-
-  }
-
-
-  showDistance(
-    distance,
-    pitch
-  );
-
-}
-
-
-/* =========================================================
-   MOSTRAR DISTANCIA
-   ========================================================= */
-
-function showDistance(
-  distance,
-  angle
-) {
-
-  $("distanceHud")
+  document.body
     .classList
-    .remove("hidden");
+    .remove(
+      "mode-red",
+      "mode-white"
+    );
 
 
   if (
-    distance === null
+    mode === 2
   ) {
 
-    $("distanceValue")
-      .textContent =
-      "> 100 m";
-
-  } else {
-
-    $("distanceValue")
-      .textContent =
-      distance.toFixed(1) +
-      " m";
+    document.body
+      .classList
+      .add(
+        "mode-red"
+      );
 
   }
 
+  else if (
+    mode === 1 ||
+    mode === 4
+  ) {
 
-  $("angleValue")
-    .textContent =
-    "ÁNGULO " +
-    angle.toFixed(2) +
-    "°";
+    document.body
+      .classList
+      .add(
+        "mode-white"
+      );
 
-
-  $("heightValue")
-    .textContent =
-    "ALTURA " +
-    state.height.toFixed(2) +
-    " m";
+  }
 
 }
-
-
-/* =========================================================
-   BOTONES
-   ========================================================= */
-
-$("startBtn")
-  ?.addEventListener(
-    "click",
-    startCamera
-  );
-
-
-$("menuBtn")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      $("controls")
-        .classList
-        .remove("hidden");
-
-    }
-  );
-
-
-$("closeBtn")
-  ?.addEventListener(
-    "click",
-    () => {
-
-      $("controls")
-        .classList
-        .add("hidden");
-
-    }
-  );
 
 
 /* =========================================================
    ACCIONES
    ========================================================= */
 
+$("startBtn")
+  .addEventListener(
+    "click",
+    startCamera
+  );
+
+
+$("menuBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      $("controls")
+        .classList
+        .remove(
+          "hidden"
+        );
+
+    }
+  );
+
+
+$("closeBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      $("controls")
+        .classList
+        .add(
+          "hidden"
+        );
+
+    }
+  );
+
+
 document
   .querySelectorAll(
     "[data-action]"
   )
-  .forEach(button => {
+  .forEach(
+    button => {
 
-    button.addEventListener(
-      "click",
-      async () => {
+      button.addEventListener(
+        "click",
+        async () => {
 
-        const action =
-          button.dataset.action;
-
-
-        /* MODO */
-
-        if (
-          action === "mode"
-        ) {
-
-          setMode();
-
-        }
+          const action =
+            button.dataset.action;
 
 
-        /* VR */
+          /* MODO */
 
-        else if (
-          action === "vr"
-        ) {
+          if (
+            action === "mode"
+          ) {
 
-          vr =
-            !vr;
+            setMode();
 
-
-          button.textContent =
-            "VR: " +
-            (
-              vr
-                ? "ON"
-                : "OFF"
-            );
+          }
 
 
-          $("vrLabel")
-            .textContent =
-            "VR " +
-            (
-              vr
-                ? "ON"
-                : "OFF"
-            );
+          /* VR */
+
+          else if (
+            action === "vr"
+          ) {
+
+            vr =
+              !vr;
 
 
-          document.body
-            .classList
-            .toggle(
-              "vr-mode",
-              vr
-            );
+            button.textContent =
+              "VR: " +
+              (
+                vr
+                  ? "ON"
+                  : "OFF"
+              );
 
 
-          updateCrosshair();
-
-        }
-
-
-        /* RETÍCULA */
-
-        else if (
-          action === "crosshair"
-        ) {
-
-          cross =
-            !cross;
+            $("vrLabel")
+              .textContent =
+              "VR " +
+              (
+                vr
+                  ? "ON"
+                  : "OFF"
+              );
 
 
-          button.textContent =
-            "RETÍCULA: " +
-            (
-              cross
-                ? "ON"
-                : "OFF"
-            );
+            document.body
+              .classList
+              .toggle(
+                "vr-mode",
+                vr
+              );
 
 
-          updateCrosshair();
+            updateReticle();
 
-        }
-
-
-        /* ESPEJO */
-
-        else if (
-          action === "mirror"
-        ) {
-
-          mirror =
-            !mirror;
+          }
 
 
-          button.textContent =
-            "ESPEJO: " +
-            (
-              mirror
-                ? "ON"
-                : "OFF"
-            );
+          /* RETÍCULA */
 
-        }
+          else if (
+            action === "reticle"
+          ) {
 
-
-        /* MEDIR */
-
-        else if (
-          action === "measure"
-        ) {
-
-          measureDistance();
-
-        }
+            reticle =
+              !reticle;
 
 
-        /* CALIBRAR */
-
-        else if (
-          action === "calibrate"
-        ) {
-
-          calibrateHorizontal();
-
-        }
+            button.textContent =
+              "RETÍCULA: " +
+              (
+                reticle
+                  ? "ON"
+                  : "OFF"
+              );
 
 
-        /* SENSORES */
+            updateReticle();
 
-        else if (
-          action === "sensors"
-        ) {
-
-          await enableMotion();
-
-        }
+          }
 
 
-        /* FULLSCREEN */
+          /* ESCALA */
 
-        else if (
-          action === "fullscreen"
-        ) {
+          else if (
+            action === "scale"
+          ) {
 
-          try {
+            scale =
+              !scale;
 
-            if (
-              document.fullscreenElement
-            ) {
 
-              await document
-                .exitFullscreen();
+            button.textContent =
+              "ESCALA: " +
+              (
+                scale
+                  ? "ON"
+                  : "OFF"
+              );
 
-            } else {
+
+            updateReticle();
+
+          }
+
+
+          /* ESPEJO */
+
+          else if (
+            action === "mirror"
+          ) {
+
+            mirror =
+              !mirror;
+
+
+            button.textContent =
+              "ESPEJO: " +
+              (
+                mirror
+                  ? "ON"
+                  : "OFF"
+              );
+
+          }
+
+
+          /* FULLSCREEN */
+
+          else if (
+            action === "fullscreen"
+          ) {
+
+            try {
 
               await document
                 .documentElement
-                .requestFullscreen();
+                .requestFullscreen?.();
 
-            }
-
-          } catch (e) {
-
-            console.warn(e);
-
-          }
-
-        }
-
-
-        /* LINTERNA */
-
-        else if (
-          action === "torch"
-        ) {
-
-          if (!track) {
-
-            alert(
-              "Activa primero la cámara."
-            );
-
-            return;
+            } catch (e) {}
 
           }
 
 
-          try {
+          /* LINTERNA */
 
-            const caps =
-              track.getCapabilities?.();
+          else if (
+            action === "torch"
+          ) {
 
-
-            if (
-              caps?.torch
-            ) {
-
-              torch =
-                !torch;
-
-
-              await track
-                .applyConstraints({
-
-                  advanced: [
-
-                    {
-                      torch:
-                        torch
-                    }
-
-                  ]
-
-                });
-
-
-              button.textContent =
-                "LINTERNA: " +
-                (
-                  torch
-                    ? "ON"
-                    : "OFF"
-                );
-
-            } else {
+            if (!track) {
 
               alert(
-                "Este teléfono/navegador no permite controlar la linterna."
+                "Activa primero la cámara."
               );
+
+              return;
 
             }
 
-          } catch (e) {
 
-            console.warn(e);
+            try {
+
+              const capabilities =
+                track.getCapabilities?.();
+
+
+              if (
+                capabilities?.torch
+              ) {
+
+                torch =
+                  !torch;
+
+
+                await track
+                  .applyConstraints({
+
+                    advanced: [
+
+                      {
+                        torch:
+                          torch
+                      }
+
+                    ]
+
+                  });
+
+
+                button.textContent =
+                  "LINTERNA: " +
+                  (
+                    torch
+                      ? "ON"
+                      : "OFF"
+                  );
+
+              }
+
+              else {
+
+                alert(
+                  "La cámara no permite controlar la linterna."
+                );
+
+              }
+
+            } catch (e) {
+
+              console.warn(e);
+
+            }
 
           }
 
         }
-
-      }
-    );
-
-  });
-
-
-/* =========================================================
-   BOTÓN MEDIR VR
-   ========================================================= */
-
-$("measureVrBtn")
-  ?.addEventListener(
-    "click",
-    measureDistance
-  );
-
-
-/* =========================================================
-   TECLADO
-
-   Si un mando Bluetooth o teclado
-   entrega una tecla, podemos usar:
-
-   M = medir
-   + = medir
-   ========================================================= */
-
-window.addEventListener(
-  "keydown",
-  event => {
-
-    if (
-      event.key === "m" ||
-      event.key === "M" ||
-      event.key === "+"
-    ) {
-
-      measureDistance();
+      );
 
     }
-
-  }
-);
+  );
 
 
 /* =========================================================
@@ -2051,7 +1720,7 @@ window.addEventListener(
    ========================================================= */
 
 $("resetBtn")
-  ?.addEventListener(
+  .addEventListener(
     "click",
     () => {
 
@@ -2064,8 +1733,7 @@ $("resetBtn")
           brightness: 1.2,
           contrast: 1.35,
           gain: 1,
-          zoom: 0.8,
-          height: 1.65
+          zoom: 0.8
 
         }
 
@@ -2081,24 +1749,15 @@ $("resetBtn")
 
 
 /* =========================================================
-   FULLSCREEN DOBLE CLICK
-
-   Se mantiene únicamente como
-   función secundaria.
-
-   En VR usamos MEDIR.
+   DOBLE TOQUE
    ========================================================= */
 
 document.addEventListener(
   "dblclick",
   () => {
 
-    if (vr) {
-
+    if (vr)
       return;
-
-    }
-
 
     document
       .documentElement
@@ -2116,15 +1775,12 @@ window.addEventListener(
   "pagehide",
   () => {
 
-    if (stream) {
-
-      stream
-        .getTracks()
-        .forEach(
-          t => t.stop()
-        );
-
-    }
+    stream
+      ?.getTracks()
+      .forEach(
+        track =>
+          track.stop()
+      );
 
   }
 );
@@ -2144,11 +1800,7 @@ if (
       "./sw.js"
     )
     .catch(
-      e =>
-        console.warn(
-          "Service Worker:",
-          e
-        )
+      () => {}
     );
 
 }
