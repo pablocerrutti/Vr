@@ -1,30 +1,13 @@
-/* =========================================
-   SERVICE WORKER
-   NIGHT VISION
-========================================= */
+const CACHE_NAME = "lonewolf-nightvision-v1.3";
 
-
-/*
- * CAMBIA ESTA VERSIÓN CADA VEZ QUE PUBLIQUES
- * UNA MODIFICACIÓN.
- */
-
-const CACHE_VERSION =
-    "night-vision-v1.0.0";
-
-
-const CACHE_FILES = [
-
+const FILES_TO_CACHE = [
     "./",
-
     "./index.html",
-
     "./style.css",
-
     "./app.js",
-
-    "./manifest.json"
-
+    "./manifest.json",
+    "./icon-192.png",
+    "./icon-512.png"
 ];
 
 
@@ -32,159 +15,205 @@ const CACHE_FILES = [
    INSTALACIÓN
 ========================================= */
 
-self.addEventListener(
-    "install",
-    event => {
+self.addEventListener("install", event => {
 
-        event.waitUntil(
+    event.waitUntil(
 
-            caches.open(
-                CACHE_VERSION
-            )
-
+        caches
+            .open(CACHE_NAME)
             .then(cache => {
 
                 return cache.addAll(
-                    CACHE_FILES
+                    FILES_TO_CACHE
                 );
 
             })
 
-            /*
-             * Permitir que la nueva versión
-             * se active inmediatamente.
-             */
+    );
 
-            .then(() => {
 
-                return self.skipWaiting();
+    /*
+     * Hace que la nueva versión quede
+     * disponible inmediatamente.
+     */
 
-            })
+    self.skipWaiting();
 
-        );
-
-    }
-);
+});
 
 
 /* =========================================
    ACTIVACIÓN
 ========================================= */
 
-self.addEventListener(
-    "activate",
-    event => {
+self.addEventListener("activate", event => {
 
-        event.waitUntil(
+    event.waitUntil(
 
-            caches.keys()
-
+        caches
+            .keys()
             .then(keys => {
 
                 return Promise.all(
 
                     keys
-                        .filter(
-                            key =>
-                                key !==
-                                CACHE_VERSION
+                        .filter(key =>
+                            key !== CACHE_NAME
                         )
-
-                        .map(
-                            key =>
-                                caches.delete(
-                                    key
-                                )
+                        .map(key =>
+                            caches.delete(key)
                         )
 
                 );
 
             })
 
-            .then(() => {
-
-                return self.clients.claim();
-
-            })
-
-        );
-
-    }
-);
+    );
 
 
-/* =========================================
-   MENSAJES
-========================================= */
+    /*
+     * Toma inmediatamente el control
+     * de las páginas abiertas.
+     */
 
-self.addEventListener(
-    "message",
-    event => {
+    self.clients.claim();
 
-        if (
-            event.data &&
-            event.data.type ===
-                "SKIP_WAITING"
-        ) {
-
-            self.skipWaiting();
-
-        }
-
-    }
-);
+});
 
 
 /* =========================================
    FETCH
 ========================================= */
 
-self.addEventListener(
-    "fetch",
-    event => {
+self.addEventListener("fetch", event => {
 
-        /*
-         * Solamente peticiones GET.
-         */
+    /*
+     * Solo solicitudes GET.
+     */
 
-        if (
-            event.request.method !==
-            "GET"
-        ) {
+    if (
+        event.request.method !== "GET"
+    ) {
 
-            return;
+        return;
 
-        }
+    }
 
 
-        /*
-         * No intervenir en recursos
-         * blob ni datos de cámara.
-         */
+    /*
+     * Para los archivos de la aplicación:
+     *
+     * NETWORK FIRST
+     *
+     * Esto permite que cuando haya
+     * Internet se descargue la versión
+     * nueva.
+     *
+     * Si no hay Internet se utiliza
+     * la copia almacenada.
+     */
 
-        if (
-            event.request.url.startsWith(
-                "blob:"
-            )
-        ) {
+    const url =
+        new URL(
+            event.request.url
+        );
 
-            return;
 
-        }
+    const isAppFile =
+        url.pathname.endsWith(
+            "/index.html"
+        ) ||
 
+        url.pathname.endsWith(
+            "/app.js"
+        ) ||
+
+        url.pathname.endsWith(
+            "/style.css"
+        ) ||
+
+        url.pathname.endsWith(
+            "/manifest.json"
+        );
+
+
+    if (isAppFile) {
 
         event.respondWith(
 
-            caches.match(
-                event.request
+            fetch(
+                event.request,
+                {
+                    cache: "no-store"
+                }
             )
-
-            .then(cached => {
+            .then(response => {
 
                 /*
-                 * Si está en caché,
-                 * utilizarlo inmediatamente.
+                 * Guardar la versión nueva.
                  */
+
+                if (
+                    response.ok
+                ) {
+
+                    const copy =
+                        response.clone();
+
+
+                    caches
+                        .open(
+                            CACHE_NAME
+                        )
+                        .then(cache => {
+
+                            cache.put(
+                                event.request,
+                                copy
+                            );
+
+                        });
+
+                }
+
+
+                return response;
+
+            })
+            .catch(() => {
+
+                /*
+                 * Sin Internet:
+                 * utilizar versión offline.
+                 */
+
+                return caches.match(
+                    event.request
+                );
+
+            })
+
+        );
+
+
+        return;
+
+    }
+
+
+    /*
+     * Imágenes, iconos y demás:
+     *
+     * CACHE FIRST
+     */
+
+    event.respondWith(
+
+        caches
+            .match(
+                event.request
+            )
+            .then(cached => {
 
                 if (cached) {
 
@@ -193,46 +222,33 @@ self.addEventListener(
                 }
 
 
-                /*
-                 * Si no está,
-                 * descargarlo.
-                 */
-
                 return fetch(
                     event.request
                 )
-
                 .then(response => {
 
                     if (
-                        !response ||
-                        response.status !== 200
+                        response.ok
                     ) {
 
-                        return response;
+                        const copy =
+                            response.clone();
+
+
+                        caches
+                            .open(
+                                CACHE_NAME
+                            )
+                            .then(cache => {
+
+                                cache.put(
+                                    event.request,
+                                    copy
+                                );
+
+                            });
 
                     }
-
-
-                    /*
-                     * Guardar copia.
-                     */
-
-                    const copy =
-                        response.clone();
-
-
-                    caches.open(
-                        CACHE_VERSION
-                    )
-                    .then(cache => {
-
-                        cache.put(
-                            event.request,
-                            copy
-                        );
-
-                    });
 
 
                     return response;
@@ -241,7 +257,6 @@ self.addEventListener(
 
             })
 
-        );
+    );
 
-    }
-);
+});
