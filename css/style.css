@@ -1,1059 +1,436 @@
+/* =========================================
+   RESET
+========================================= */
+
 * {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
-
-  margin: 0;
-  padding: 0;
-
-  width: 100%;
-  height: 100%;
-
-  overflow: hidden;
-
-  background: #000;
-
-  color: #9cff9c;
-
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
-
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: #00ff66;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 }
 
-body {
-  touch-action: manipulation;
-}
+
+/* =========================================
+   APP
+========================================= */
 
 #app {
 
-  position: relative;
+    position: fixed;
 
-  width: 100%;
-  height: 100%;
+    inset: 0;
 
-  overflow: hidden;
+    width: 100vw;
+    height: 100vh;
 
-  background: #000;
+    background: #000;
+
+    overflow: hidden;
 
 }
+
+
+/* =========================================
+   CÁMARA
+========================================= */
 
 #camera {
 
-  position: absolute;
+    position: absolute;
 
-  width: 1px;
-  height: 1px;
+    inset: 0;
 
-  opacity: 0;
+    width: 100%;
+    height: 100%;
 
-  pointer-events: none;
+    object-fit: cover;
 
-}
-
-#view {
-
-  position: absolute;
-
-  inset: 0;
-
-  width: 100%;
-  height: 100%;
-
-  display: block;
-
-  background: #000;
+    background: #000;
 
 }
 
 
-/* ==================================================
+/* =========================================
+   CANVAS
+========================================= */
+
+#nightCanvas {
+
+    position: absolute;
+
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================
    HUD
-   ================================================== */
+========================================= */
 
 #hud {
 
-  position: absolute;
+    position: absolute;
 
-  inset: 0;
+    inset: 0;
 
-  pointer-events: none;
-
-  z-index: 20;
-
-  text-shadow:
-    0 0 5px #000,
-    0 0 10px #000;
+    pointer-events: none;
 
 }
 
-.hud-top,
-.hud-bottom {
 
-  position: absolute;
+/* =========================================
+   INFORMACIÓN SUPERIOR
+========================================= */
 
-  left: 0;
-  right: 0;
+#hudTop {
 
-  display: flex;
+    position: absolute;
 
-  justify-content:
-    space-between;
-
-  padding: 12px 16px;
-
-  font-size: 11px;
-
-  font-weight: bold;
-
-  letter-spacing: 1.5px;
-
-}
-
-.hud-top {
-
-  top:
-    env(
-      safe-area-inset-top,
-      0px
+    top: max(
+        15px,
+        env(safe-area-inset-top)
     );
 
-}
+    left: 0;
+    right: 0;
 
-.hud-bottom {
+    display: flex;
 
-  bottom:
-    env(
-      safe-area-inset-bottom,
-      0px
-    );
+    justify-content: space-between;
 
-}
+    padding: 12px 16px;
 
-#rangeLegend {
+    font-size: 12px;
 
-  position: absolute;
+    letter-spacing: 2px;
 
-  top: 48px;
-
-  left: 50%;
-
-  transform:
-    translateX(-50%);
-
-  display: flex;
-
-  gap: 15px;
-
-  font-size: 8px;
-
-  letter-spacing: 2px;
-
-  opacity: .75;
+    text-shadow:
+        0 0 5px #000,
+        0 0 10px #000;
 
 }
 
 
-/* ==================================================
+#appTitle {
+
+    font-weight: bold;
+
+}
+
+
+#cameraStatus {
+
+    color: #00ff66;
+
+}
+
+
+/* =========================================
+   LOADING
+========================================= */
+
+#loading {
+
+    position: absolute;
+
+    inset: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    align-items: center;
+
+    background: #000;
+
+    color: #00ff66;
+
+    transition: opacity .4s ease;
+
+}
+
+
+#loading.hidden {
+
+    opacity: 0;
+
+    pointer-events: none;
+
+}
+
+
+.loading-title {
+
+    font-size: 24px;
+
+    font-weight: bold;
+
+    letter-spacing: 5px;
+
+    margin-bottom: 12px;
+
+}
+
+
+.loading-text {
+
+    font-size: 12px;
+
+    letter-spacing: 2px;
+
+}
+
+
+/* =========================================
    RETÍCULA
-   ================================================== */
+========================================= */
 
-#reticle {
+.reticle {
 
-  position: absolute;
+    position: absolute;
 
-  inset: 0;
+    left: 50%;
+    top: 50%;
 
-  z-index: 15;
+    width: 220px;
+    height: 220px;
 
-  pointer-events: none;
+    transform:
+        translate(-50%, -50%);
 
-}
-
-#normalReticle {
-
-  position: absolute;
-
-  inset: 0;
-
-}
-
-#vrReticle {
-
-  display: none;
-
-  position: absolute;
-
-  inset: 0;
-
-}
-
-.vr-eye {
-
-  position: absolute;
-
-  top: 0;
-
-  width: 50%;
-  height: 100%;
-
-}
-
-.vr-eye:first-child {
-  left: 0;
-}
-
-.vr-eye:last-child {
-  right: 0;
-}
-
-
-/* ==================================================
-   CRUZ
-   ================================================== */
-
-.crosshair {
-
-  position: absolute;
-
-  left: 50%;
-  top: 50%;
-
-  width: 1px;
-  height: 1px;
-
-  z-index: 100;
-
-}
-
-.crosshair .horizontal {
-
-  position: absolute;
-
-  width: 70px;
-  height: 1px;
-
-  left: -35px;
-  top: 0;
-
-  background:
-    rgba(
-      140,
-      255,
-      140,
-      .95
-    );
-
-  box-shadow:
-    0 0 4px
-    rgba(
-      100,
-      255,
-      100,
-      .8
-    );
-
-}
-
-.crosshair .vertical {
-
-  position: absolute;
-
-  width: 1px;
-  height: 70px;
-
-  left: 0;
-  top: -35px;
-
-  background:
-    rgba(
-      140,
-      255,
-      140,
-      .95
-    );
-
-  box-shadow:
-    0 0 4px
-    rgba(
-      100,
-      255,
-      100,
-      .8
-    );
-
-}
-
-.center-dot {
-
-  position: absolute;
-
-  width: 5px;
-  height: 5px;
-
-  left: -2.5px;
-  top: -2.5px;
-
-  border-radius: 50%;
-
-  background:
-    #aaffaa;
-
-  box-shadow:
-    0 0 5px
-    #7fff7f;
+    pointer-events: none;
 
 }
 
 
-/* ==================================================
-   ESCALA DINÁMICA
-   ================================================== */
+.reticle.hidden {
 
-#rangeScale {
-
-  position: absolute;
-
-  inset: 0;
-
-  pointer-events: none;
-
-  z-index: 50;
+    display: none;
 
 }
 
 
-.vr-scale {
+.reticle-horizontal {
 
-  position: absolute;
+    position: absolute;
 
-  inset: 0;
+    left: 0;
+    right: 0;
 
-  pointer-events: none;
+    top: 50%;
 
-  z-index: 50;
+    height: 1px;
 
-}
+    background:
+        rgba(0, 255, 100, .8);
 
-
-/*
-   Cada rectángulo representa un objetivo
-   de 45 x 40 cm visto desde esa distancia.
-*/
-
-.dynamic-range-scale {
-
-  position: absolute;
-
-  inset: 0;
-
-  width: 100%;
-  height: 100%;
+    box-shadow:
+        0 0 4px rgba(0, 255, 100, .8);
 
 }
 
 
-.range-target {
+.reticle-vertical {
 
-  position: absolute;
+    position: absolute;
 
-  left: 50%;
-  top: 50%;
+    top: 0;
+    bottom: 0;
 
-  border:
-    1px solid
-    rgba(
-      125,
-      255,
-      125,
-      .85
-    );
+    left: 50%;
 
-  box-shadow:
-    0 0 3px
-    rgba(
-      100,
-      255,
-      100,
-      .5
-    );
+    width: 1px;
 
-  transform:
-    translate(
-      -50%,
-      -50%
-    );
+    background:
+        rgba(0, 255, 100, .8);
 
-  min-width: 8px;
-  min-height: 8px;
+    box-shadow:
+        0 0 4px rgba(0, 255, 100, .8);
 
 }
 
 
-.range-target::before,
-.range-target::after {
+.reticle-center {
 
-  content: "";
+    position: absolute;
 
-  position: absolute;
+    width: 5px;
+    height: 5px;
 
-  background:
-    rgba(
-      125,
-      255,
-      125,
-      .95
-    );
+    left: 50%;
+    top: 50%;
 
-}
+    transform:
+        translate(-50%, -50%);
 
+    border:
+        1px solid #00ff66;
 
-/*
-   pequeñas extensiones en las esquinas
-*/
+    border-radius: 50%;
 
-.range-target::before {
-
-  left: -1px;
-  top: -1px;
-
-  width: 14px;
-  height: 1px;
-
-}
-
-.range-target::after {
-
-  left: -1px;
-  top: -1px;
-
-  width: 1px;
-  height: 14px;
+    box-shadow:
+        0 0 5px #00ff66;
 
 }
 
 
-/*
-   Etiqueta
-*/
-
-.range-target-label {
-
-  position: absolute;
-
-  right: 3px;
-  top: 3px;
-
-  padding:
-    2px
-    3px;
-
-  font-size: 8px;
-
-  line-height: 1;
-
-  font-weight: bold;
-
-  letter-spacing: 1px;
-
-  color:
-    #aaffaa;
-
-  background:
-    rgba(
-      0,
-      0,
-      0,
-      .55
-    );
-
-  text-shadow:
-    0 0 4px #000;
-
-}
-
-
-/*
-   La caja más cercana puede ser grande.
-   Las más lejanas serán pequeñas.
-*/
-
-.range-target[data-distance="20"] {
-  border-width: 1.5px;
-}
-
-.range-target[data-distance="30"] {
-  border-color:
-    rgba(
-      125,
-      255,
-      125,
-      .90
-    );
-}
-
-.range-target[data-distance="40"] {
-  border-color:
-    rgba(
-      125,
-      255,
-      125,
-      .86
-    );
-}
-
-.range-target[data-distance="50"] {
-  border-color:
-    rgba(
-      125,
-      255,
-      125,
-      .82
-    );
-}
-
-.range-target[data-distance="60"] {
-  border-color:
-    rgba(
-      125,
-      255,
-      125,
-      .76
-    );
-}
-
-.range-target[data-distance="75"] {
-  border-color:
-    rgba(
-      125,
-      255,
-      125,
-      .68
-    );
-}
-
-.range-target[data-distance="100"] {
-  border-color:
-    rgba(
-      125,
-      255,
-      125,
-      .60
-    );
-}
-
-
-/* ==================================================
-   INFORMACIÓN
-   ================================================== */
-
-.reticle-info {
-
-  position: absolute;
-
-  top:
-    calc(
-      50% + 165px
-    );
-
-  left: 50%;
-
-  transform:
-    translateX(-50%);
-
-  font-size: 8px;
-
-  letter-spacing: 2px;
-
-  opacity: .65;
-
-}
-
-
-/* ==================================================
-   PANEL INICIAL
-   ================================================== */
-
-.panel {
-
-  position: absolute;
-
-  z-index: 50;
-
-  left: 50%;
-  top: 50%;
-
-  transform:
-    translate(
-      -50%,
-      -50%
-    );
-
-  width:
-    min(
-      90%,
-      420px
-    );
-
-  padding: 28px;
-
-  text-align: center;
-
-  background:
-    rgba(
-      2,
-      10,
-      2,
-      .95
-    );
-
-  border:
-    1px solid
-    rgba(
-      120,
-      255,
-      120,
-      .3
-    );
-
-}
-
-.brand {
-
-  font-size: 25px;
-
-  font-weight: 900;
-
-  letter-spacing: 4px;
-
-}
-
-.brand span {
-
-  display: block;
-
-  font-size: 13px;
-
-  letter-spacing: 5px;
-
-  margin-top: 5px;
-
-}
-
-.panel p {
-
-  font-size: 12px;
-
-  line-height: 1.6;
-
-  opacity: .8;
-
-}
-
-.panel small {
-
-  display: block;
-
-  margin-top: 15px;
-
-  font-size: 9px;
-
-  opacity: .55;
-
-  line-height: 1.5;
-
-}
-
-
-/* ==================================================
-   BOTONES
-   ================================================== */
-
-button {
-
-  border:
-    1px solid
-    rgba(
-      120,
-      255,
-      120,
-      .35
-    );
-
-  background:
-    rgba(
-      5,
-      20,
-      5,
-      .85
-    );
-
-  color:
-    #aaffaa;
-
-  padding: 11px;
-
-  font-weight: bold;
-
-  letter-spacing: 1px;
-
-}
-
-button:active {
-  transform: scale(.97);
-}
-
-#startBtn {
-  width: 100%;
-}
-
-
-/* ==================================================
-   MENÚ
-   ================================================== */
-
-.roundBtn {
-
-  position: absolute;
-
-  z-index: 40;
-
-  right: 15px;
-
-  top:
-    calc(
-      env(
-        safe-area-inset-top,
-        0px
-      ) + 15px
-    );
-
-  width: 42px;
-  height: 42px;
-
-  border-radius: 50%;
-
-  padding: 0;
-
-  font-size: 20px;
-
-}
-
-
-/* ==================================================
+/* =========================================
    CONTROLES
-   ================================================== */
+========================================= */
 
-.controls {
+#controls {
 
-  position: absolute;
+    position: absolute;
 
-  z-index: 60;
+    left: 0;
+    right: 0;
+    bottom: 0;
 
-  right: 0;
-  top: 0;
+    display: flex;
 
-  width:
-    min(
-      92%,
-      390px
-    );
+    justify-content: center;
 
-  height: 100%;
+    align-items: center;
 
-  overflow-y: auto;
+    gap: 8px;
 
-  padding:
-    calc(
-      env(
-        safe-area-inset-top,
-        0px
-      ) + 15px
-    )
-    15px
-    25px;
+    padding:
 
-  background:
-    rgba(
-      2,
-      8,
-      2,
-      .97
-    );
+        12px
 
-  border-left:
-    1px solid
-    rgba(
-      120,
-      255,
-      120,
-      .25
-    );
+        12px
 
-}
+        max(
+            15px,
+            env(safe-area-inset-bottom)
+        );
 
-.controls header {
-
-  display: flex;
-
-  justify-content:
-    space-between;
-
-  align-items: center;
-
-  margin-bottom: 20px;
-
-}
-
-.close {
-
-  background: transparent;
-
-  border: 0;
-
-  font-size: 28px;
-
-  padding: 0;
-
-}
-
-.controls label {
-
-  display: block;
-
-  margin: 15px 0;
-
-  font-size: 12px;
-
-}
-
-.controls output {
-
-  float: right;
-
-}
-
-.controls input[type="range"] {
-
-  width: 100%;
-
-  display: block;
-
-  margin-top: 8px;
-
-  accent-color:
-    #72ff72;
+    background:
+        linear-gradient(
+            transparent,
+            rgba(0,0,0,.85)
+        );
 
 }
 
 
-/* ==================================================
-   REFERENCIA
-   ================================================== */
+.control-button {
 
-.target-box {
+    min-width: 75px;
 
-  display: flex;
+    height: 42px;
 
-  flex-direction: column;
+    border:
 
-  gap: 4px;
+        1px solid
 
-  padding: 12px;
+        rgba(0,255,100,.65);
 
-  margin:
-    20px 0
-    10px;
+    border-radius: 5px;
 
-  border:
-    1px solid
-    rgba(
-      120,
-      255,
-      120,
-      .25
-    );
+    background:
+        rgba(0,0,0,.65);
 
-  background:
-    rgba(
-      30,
-      100,
-      30,
-      .08
-    );
+    color: #00ff66;
 
-  text-align: center;
+    font-size: 11px;
 
-}
+    font-weight: bold;
 
-.target-box strong {
+    letter-spacing: 1px;
 
-  font-size: 9px;
-
-  letter-spacing: 2px;
-
-}
-
-.target-box span {
-
-  font-size: 18px;
-
-  font-weight: bold;
-
-}
-
-.target-box small {
-
-  font-size: 8px;
-
-  opacity: .6;
+    cursor: pointer;
 
 }
 
 
-/* ==================================================
-   GRID
-   ================================================== */
+.control-button:active {
 
-.grid {
-
-  display: grid;
-
-  grid-template-columns:
-    1fr 1fr;
-
-  gap: 7px;
-
-}
-
-.grid button {
-
-  min-height: 42px;
-
-  font-size: 9px;
-
-}
-
-.secondary {
-
-  width: 100%;
-
-  margin-top: 12px;
-
-}
-
-.warning {
-
-  font-size: 9px;
-
-  line-height: 1.5;
-
-  opacity: .5;
+    transform: scale(.95);
 
 }
 
 
-/* ==================================================
-   OCULTO
-   ================================================== */
+.control-button.active {
 
-.hidden {
-  display: none !important;
-}
+    background:
+        rgba(0,255,100,.18);
 
-
-/* ==================================================
-   VR
-   ================================================== */
-
-body.vr-mode
-#normalReticle {
-
-  display: none;
-
-}
-
-body.vr-mode
-#vrReticle {
-
-  display: block;
+    box-shadow:
+        0 0 10px
+        rgba(0,255,100,.25);
 
 }
 
 
-/* ==================================================
-   MODOS DE RETÍCULA
-   ================================================== */
+.control-button.small {
 
-body.mode-red
-.crosshair .horizontal,
-body.mode-red
-.crosshair .vertical {
+    min-width: 42px;
 
-  background:
-    rgba(
-      255,
-      80,
-      60,
-      .95
-    );
+    width: 42px;
 
-}
-
-body.mode-red
-.center-dot {
-
-  background:
-    #ff5040;
-
-}
-
-body.mode-white
-.crosshair .horizontal,
-body.mode-white
-.crosshair .vertical {
-
-  background:
-    rgba(
-      255,
-      255,
-      255,
-      .95
-    );
-
-}
-
-body.mode-white
-.center-dot {
-
-  background:
-    #fff;
+    font-size: 20px;
 
 }
 
 
-/* ==================================================
-   MÓVIL
-   ================================================== */
+/* =========================================
+   VERSIÓN
+========================================= */
 
-@media
-(max-width: 600px) {
+#version {
 
-  .range-target-label {
+    position: absolute;
 
-    font-size: 7px;
+    right: 8px;
 
-  }
+    bottom:
+        calc(
+            70px +
+            env(safe-area-inset-bottom)
+        );
 
-  .reticle-info {
+    font-size: 9px;
 
-    top:
-      calc(
-        50% + 145px
-      );
+    color:
+        rgba(0,255,100,.45);
 
-  }
+    pointer-events: none;
+
+}
+
+
+/* =========================================
+   MODO PANTALLA COMPLETA
+========================================= */
+
+@media (orientation: landscape) {
+
+    #controls {
+
+        padding-left: 20px;
+        padding-right: 20px;
+
+    }
+
+}
