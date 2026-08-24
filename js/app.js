@@ -1,7 +1,7 @@
 const video=document.getElementById("camera"),canvas=document.getElementById("view"),ctx=canvas.getContext("2d",{alpha:false});
 const $=id=>document.getElementById(id);
 let stream=null,track=null,raf=0,last=performance.now(),frames=0,mode=0,vr=false,cross=true,mirror=false,torch=false;
-const state={brightness:1.2,contrast:1.35,gain:1,zoom:1};
+const state={brightness:1.2,contrast:1.35,gain:1,zoom:0.8};
 
 function loadState(){try{Object.assign(state,JSON.parse(localStorage.getItem("nvvr")||"{}"))}catch{}; for(const k of Object.keys(state)){if($(k))$(k).value=state[k];}}
 function saveState(){localStorage.setItem("nvvr",JSON.stringify(state))}
