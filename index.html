@@ -1,409 +1,383 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
+    <meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
-  >
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
 
-  <meta name="theme-color" content="#050805">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta
+        name="theme-color"
+        content="#000000"
+    >
 
-  <title>LONEWOLF NIGHTVISION VR</title>
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
 
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="css/style.css">
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="black-translucent"
+    >
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="Visor Nocturno"
+    >
+
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="application-name"
+        content="Visor Nocturno"
+    >
+
+    <link
+        rel="manifest"
+        href="./manifest.json"
+    >
+
+    <link
+        rel="stylesheet"
+        href="./style.css"
+    >
+
+    <title>Visor Nocturno</title>
 </head>
 
 <body>
 
-<main id="app">
+    <!-- =========================================
+         CONTENEDOR PRINCIPAL
+    ========================================== -->
 
-  <video
-    id="camera"
-    autoplay
-    muted
-    playsinline
-  ></video>
+    <main id="visor">
 
-  <canvas id="view"></canvas>
+        <!-- =====================================
+             CÁMARA
+        ====================================== -->
 
-  <!-- ==================================================
-       RETÍCULA
-       ================================================== -->
-
-  <div id="reticle">
-
-    <!-- RETÍCULA NORMAL -->
-
-    <div id="normalReticle">
-
-      <div class="crosshair">
-
-        <span class="horizontal"></span>
-        <span class="vertical"></span>
-
-        <span class="center-dot"></span>
-
-      </div>
-
-      <div id="rangeScale">
-
-        <div class="range-label label20">20</div>
-        <div class="range-label label30">30</div>
-        <div class="range-label label40">40</div>
-        <div class="range-label label50">50</div>
-        <div class="range-label label60">60</div>
-        <div class="range-label label75">75</div>
-        <div class="range-label label100">100</div>
-
-        <div class="range-line line20"></div>
-        <div class="range-line line30"></div>
-        <div class="range-line line40"></div>
-        <div class="range-line line50"></div>
-        <div class="range-line line60"></div>
-        <div class="range-line line75"></div>
-        <div class="range-line line100"></div>
-
-      </div>
-
-      <div class="reticle-info">
-        OBJETIVO 45 × 40 CM
-      </div>
-
-    </div>
+        <video
+            id="video"
+            autoplay
+            playsinline
+            muted
+        ></video>
 
 
-    <!-- ==================================================
-         RETÍCULAS VR
-         ================================================== -->
+        <!-- =====================================
+             CAPA DE VISIÓN NOCTURNA
+        ====================================== -->
 
-    <div id="vrReticle">
-
-      <div class="vr-eye">
-
-        <div class="crosshair">
-
-          <span class="horizontal"></span>
-          <span class="vertical"></span>
-
-          <span class="center-dot"></span>
-
-        </div>
-
-        <div class="vr-scale">
-
-          <span class="vr-mark m20">20</span>
-          <span class="vr-mark m30">30</span>
-          <span class="vr-mark m40">40</span>
-          <span class="vr-mark m50">50</span>
-          <span class="vr-mark m60">60</span>
-          <span class="vr-mark m75">75</span>
-          <span class="vr-mark m100">100</span>
-
-        </div>
-
-      </div>
+        <canvas
+            id="nightVisionCanvas"
+        ></canvas>
 
 
-      <div class="vr-eye">
+        <!-- =====================================
+             RETÍCULA
+        ====================================== -->
 
-        <div class="crosshair">
+        <div
+            id="reticle"
+            class="reticle"
+        >
 
-          <span class="horizontal"></span>
-          <span class="vertical"></span>
+            <!-- Línea vertical -->
+            <div
+                class="reticle-vertical"
+            ></div>
 
-          <span class="center-dot"></span>
+            <!-- Línea horizontal -->
+            <div
+                class="reticle-horizontal"
+            ></div>
 
-        </div>
+            <!-- Centro -->
+            <div
+                class="reticle-center"
+            ></div>
 
-        <div class="vr-scale">
+            <!-- =================================
+                 ESCALA DE DISTANCIA
+            ================================== -->
 
-          <span class="vr-mark m20">20</span>
-          <span class="vr-mark m30">30</span>
-          <span class="vr-mark m40">40</span>
-          <span class="vr-mark m50">50</span>
-          <span class="vr-mark m60">60</span>
-          <span class="vr-mark m75">75</span>
-          <span class="vr-mark m100">100</span>
+            <div
+                id="rangeScale"
+                class="range-scale"
+            >
+
+                <div
+                    class="range-line range-20"
+                >
+                    <span>20</span>
+                </div>
+
+                <div
+                    class="range-line range-30"
+                >
+                    <span>30</span>
+                </div>
+
+                <div
+                    class="range-line range-40"
+                >
+                    <span>40</span>
+                </div>
+
+                <div
+                    class="range-line range-50"
+                >
+                    <span>50</span>
+                </div>
+
+                <div
+                    class="range-line range-60"
+                >
+                    <span>60</span>
+                </div>
+
+                <div
+                    class="range-line range-75"
+                >
+                    <span>75</span>
+                </div>
+
+                <div
+                    class="range-line range-100"
+                >
+                    <span>100</span>
+                </div>
+
+            </div>
 
         </div>
 
-      </div>
 
-    </div>
+        <!-- =====================================
+             INFORMACIÓN SUPERIOR
+        ====================================== -->
 
-  </div>
+        <div
+            id="topInfo"
+            class="top-info"
+        >
 
+            <span id="appName">
+                NIGHT VISION
+            </span>
 
-  <!-- ==================================================
-       HUD
-       ================================================== -->
+            <span id="status">
+                OFFLINE
+            </span>
 
-  <div id="hud">
+        </div>
 
-    <div class="hud-top">
 
-      <span id="status">
-        CÁMARA OFFLINE
-      </span>
+        <!-- =====================================
+             INFORMACIÓN DE DISTANCIA
+        ====================================== -->
 
-      <span id="fps">
-        0 FPS
-      </span>
+        <div
+            id="distanceInfo"
+            class="distance-info"
+        >
+            OBJETIVO 45 × 40 CM
+        </div>
 
-    </div>
 
+        <!-- =====================================
+             CONTROLES
+        ====================================== -->
 
-    <div class="hud-bottom">
+        <div
+            id="controls"
+            class="controls"
+        >
 
-      <span id="modeLabel">
-        NIGHT VISION
-      </span>
+            <!-- Iniciar cámara -->
 
-      <span id="vrLabel">
-        VR OFF
-      </span>
+            <button
+                id="startCamera"
+                type="button"
+            >
+                CÁMARA
+            </button>
 
-    </div>
 
+            <!-- Visión nocturna -->
 
-    <div id="rangeLegend">
+            <button
+                id="nightVision"
+                type="button"
+            >
+                NV
+            </button>
 
-      <span>45 × 40 CM</span>
 
-      <span>20–100 M</span>
+            <!-- Retícula -->
 
-    </div>
+            <button
+                id="toggleReticle"
+                type="button"
+            >
+                RETÍCULA
+            </button>
 
-  </div>
 
+            <!-- Escala -->
 
-  <!-- ==================================================
-       PANEL INICIAL
-       ================================================== -->
+            <button
+                id="toggleScale"
+                type="button"
+            >
+                ESCALA
+            </button>
 
-  <section id="startPanel" class="panel">
 
-    <div class="brand">
-      LONEWOLF 
-      <span>NIGHTVISION</span>
-    </div>
+            <!-- Cambio de cámara -->
 
-    <p>
-      VISOR NOCTURNO DIGITAL
-      <br>
-      TELÉFONO + VR BOX
-    </p>
+            <button
+                id="switchCamera"
+                type="button"
+            >
+                ↻
+            </button>
 
-    <button id="startBtn">
-      ACTIVAR CÁMARA
-    </button>
+        </div>
 
-    <small>
-      La cámara requiere HTTPS.
-      La aplicación puede funcionar offline
-      después de haber sido cargada.
-    </small>
 
-  </section>
+        <!-- =====================================
+             INDICADOR DE VERSIÓN
+        ====================================== -->
 
+        <div
+            id="version"
+            class="version"
+        >
+            V2
+        </div>
 
-  <!-- ==================================================
-       MENÚ
-       ================================================== -->
+    </main>
 
-  <button
-    id="menuBtn"
-    class="roundBtn"
-    aria-label="Controles"
-  >
-    ☰
-  </button>
 
+    <!-- =========================================
+         JAVASCRIPT PRINCIPAL
+    ========================================== -->
 
-  <!-- ==================================================
-       CONTROLES
-       ================================================== -->
+    <script src="./app.js"></script>
 
-  <aside
-    id="controls"
-    class="controls hidden"
-  >
 
-    <header>
+    <!-- =========================================
+         SERVICE WORKER / ACTUALIZACIONES
+    ========================================== -->
 
-      <strong>
-        LONEWOLF // CONTROLES
-      </strong>
+    <script>
 
-      <button
-        id="closeBtn"
-        class="close"
-      >
-        ×
-      </button>
+        if ("serviceWorker" in navigator) {
 
-    </header>
+            navigator.serviceWorker
+                .register("./sw.js")
+                .then(registration => {
 
+                    console.log(
+                        "Service Worker registrado:",
+                        registration.scope
+                    );
 
-    <label>
 
-      Brillo
+                    /*
+                     * Comprobar periódicamente si existe
+                     * una nueva versión.
+                     */
 
-      <output id="brightnessOut">
-        1.20
-      </output>
+                    setInterval(() => {
 
-      <input
-        id="brightness"
-        type="range"
-        min="0.5"
-        max="2.5"
-        step="0.05"
-        value="1.2"
-      >
+                        registration.update();
 
-    </label>
+                    }, 60 * 1000);
 
 
-    <label>
+                    /*
+                     * Detectar una nueva versión.
+                     */
 
-      Contraste
+                    registration.addEventListener(
+                        "updatefound",
+                        () => {
 
-      <output id="contrastOut">
-        1.35
-      </output>
+                            const newWorker =
+                                registration.installing;
 
-      <input
-        id="contrast"
-        type="range"
-        min="0.5"
-        max="2.5"
-        step="0.05"
-        value="1.35"
-      >
+                            if (!newWorker) {
+                                return;
+                            }
 
-    </label>
 
+                            newWorker.addEventListener(
+                                "statechange",
+                                () => {
 
-    <label>
+                                    if (
+                                        newWorker.state ===
+                                        "installed" &&
+                                        navigator
+                                            .serviceWorker
+                                            .controller
+                                    ) {
 
-      Ganancia
+                                        /*
+                                         * Nueva versión
+                                         * disponible.
+                                         */
 
-      <output id="gainOut">
-        1.00
-      </output>
+                                        newWorker.postMessage({
+                                            type:
+                                                "SKIP_WAITING"
+                                        });
 
-      <input
-        id="gain"
-        type="range"
-        min="0.5"
-        max="3"
-        step="0.05"
-        value="1"
-      >
+                                    }
 
-    </label>
+                                }
+                            );
 
+                        }
+                    );
 
-    <label>
+                })
+                .catch(error => {
 
-      Zoom
+                    console.error(
+                        "Error registrando Service Worker:",
+                        error
+                    );
 
-      <output id="zoomOut">
-        0.8×
-      </output>
+                });
 
-      <input
-        id="zoom"
-        type="range"
-        min="0.8"
-        max="4"
-        step="0.1"
-        value="0.8"
-      >
 
-    </label>
+            /*
+             * Cuando el nuevo Service Worker toma
+             * el control, recargamos la aplicación.
+             */
 
+            navigator.serviceWorker.addEventListener(
+                "controllerchange",
+                () => {
 
-    <div class="target-box">
+                    window.location.reload();
 
-      <strong>
-        REFERENCIA
-      </strong>
+                }
+            );
 
-      <span>
-        45 × 40 CM
-      </span>
+        }
 
-      <small>
-        Escala angular 20–100 m
-      </small>
-
-    </div>
-
-
-    <div class="grid">
-
-      <button data-action="mode">
-        MODO: VERDE
-      </button>
-
-      <button data-action="vr">
-        VR: OFF
-      </button>
-
-      <button data-action="reticle">
-        RETÍCULA: ON
-      </button>
-
-      <button data-action="mirror">
-        ESPEJO: OFF
-      </button>
-
-      <button data-action="scale">
-        ESCALA: ON
-      </button>
-
-      <button data-action="torch">
-        LINTERNA: OFF
-      </button>
-
-      <button data-action="fullscreen">
-        PANTALLA COMPLETA
-      </button>
-
-    </div>
-
-
-    <button
-      id="resetBtn"
-      class="secondary"
-    >
-      RESTABLECER
-    </button>
-
-
-    <p class="warning">
-
-      La escala representa el tamaño angular
-      de una referencia de 45 × 40 cm.
-      La distancia obtenida es aproximada y
-      depende del tamaño real del objeto,
-      perspectiva y encuadre.
-
-    </p>
-
-  </aside>
-
-</main>
-
-<script src="js/app.js"></script>
+    </script>
 
 </body>
 </html>
