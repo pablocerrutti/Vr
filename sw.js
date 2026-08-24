@@ -1,4 +1,4 @@
-const CACHE_VERSION = "visor-nocturno-v2";
+const CACHE_VERSION = "visor-nocturno-3";
 
 const CACHE_FILES = [
     "./",
