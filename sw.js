@@ -1,4 +1,4 @@
-const CACHE_NAME = "lonewolf-nightvision-v1.3";
+const CACHE_NAME = "lonewolf-nightvision-v4.1";
 
 const FILES_TO_CACHE = [
     "./",
