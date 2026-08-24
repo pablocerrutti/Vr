@@ -1,76 +1,347 @@
 <!doctype html>
 <html lang="es">
+
 <head>
+
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#050805">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title> LONWOLF NIGTHVISION VR</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="css/style.css">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+  >
+
+  <meta
+    name="theme-color"
+    content="#050805"
+  >
+
+  <meta
+    name="mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <title>LONEWOLF NIGHTVISION VR</title>
+
+  <link
+    rel="manifest"
+    href="manifest.json"
+  >
+
+  <link
+    rel="stylesheet"
+    href="css/style.css"
+  >
+
 </head>
+
 <body>
+
   <main id="app">
-    <video id="camera" autoplay muted playsinline></video>
+
+    <!-- =========================================
+         CÁMARA
+         ========================================= -->
+
+    <video
+      id="camera"
+      autoplay
+      muted
+      playsinline
+    ></video>
+
+
+    <!-- =========================================
+         CANVAS DE PROCESAMIENTO
+         ========================================= -->
+
     <canvas id="view"></canvas>
 
-    <div id="crosshair" aria-hidden="true">
-      <span></span><i></i>
+
+    <!-- =========================================
+         RETÍCULA
+         ========================================= -->
+
+    <div
+      id="crosshair"
+      aria-hidden="true"
+    >
+      <span></span>
+      <i></i>
     </div>
+
+
+    <!-- =========================================
+         HUD
+         ========================================= -->
 
     <div id="hud">
+
       <div class="hud-top">
-        <span id="status">CÁMARA OFFLINE</span>
-        <span id="fps">0 FPS</span>
+
+        <span id="status">
+          CÁMARA OFFLINE
+        </span>
+
+        <span id="fps">
+          0 FPS
+        </span>
+
       </div>
+
+
       <div class="hud-bottom">
-        <span id="modeLabel">NIGHT VISION</span>
-        <span id="vrLabel">VR OFF</span>
+
+        <span id="modeLabel">
+          NIGHT VISION
+        </span>
+
+        <span id="vrLabel">
+          VR OFF
+        </span>
+
       </div>
+
     </div>
 
-    <section id="startPanel" class="panel">
-      <div class="brand">NIGHT<span>VISION</span></div>
-      <p>Visor nocturno digital para teléfono + VR Box</p>
-      <button id="startBtn">ACTIVAR CÁMARA</button>
-      <small>La cámara requiere HTTPS o localhost. La aplicación está preparada para funcionar offline una vez instalada.</small>
-    </section>
 
-    <button id="menuBtn" class="roundBtn" aria-label="Controles">☰</button>
+    <!-- =========================================
+         PANEL DE INICIO
+         ========================================= -->
 
-    <aside id="controls" class="controls hidden">
-      <header>
-        <strong>CONTROLES</strong>
-        <button id="closeBtn" class="close">×</button>
-      </header>
+    <section
+      id="startPanel"
+      class="panel"
+    >
 
-      <label>Brillo <output id="brightnessOut">1.20</output>
-        <input id="brightness" type="range" min="0.5" max="2.5" step="0.05" value="1.2">
-      </label>
-      <label>Contraste <output id="contrastOut">1.35</output>
-        <input id="contrast" type="range" min="0.5" max="2.5" step="0.05" value="1.35">
-      </label>
-      <label>Ganancia <output id="gainOut">1.00</output>
-        <input id="gain" type="range" min="0.5" max="3" step="0.05" value="1">
-      </label>
-      <label>Zoom <output id="zoomOut">0.8×</output>
-        <input id="zoom" type="range" min="0.8" max="4" step="0.1" value="0.8">
-      </label>
-
-      <div class="grid">
-        <button data-action="mode">MODO: VERDE</button>
-        <button data-action="vr">VR: OFF</button>
-        <button data-action="crosshair">RETÍCULA: ON</button>
-        <button data-action="mirror">ESPEJO: OFF</button>
-        <button data-action="torch">LINTERNA: OFF</button>
-        <button data-action="fullscreen">PANTALLA COMPLETA</button>
+      <div class="brand">
+        NIGHT<span>VISION</span>
       </div>
 
-      <button id="resetBtn" class="secondary">RESTABLECER</button>
-      <p class="warning">Nota: el procesamiento mejora una imagen con poca luz, pero no crea visión infrarroja real. La linterna depende del hardware del teléfono.</p>
+      <p>
+        Visor nocturno digital para teléfono + VR Box
+      </p>
+
+      <button id="startBtn">
+        ACTIVAR CÁMARA
+      </button>
+
+      <small>
+        La cámara requiere HTTPS o localhost.
+        La aplicación está preparada para funcionar
+        offline una vez instalada.
+      </small>
+
+    </section>
+
+
+    <!-- =========================================
+         BOTÓN MENÚ
+         ========================================= -->
+
+    <button
+      id="menuBtn"
+      class="roundBtn"
+      aria-label="Controles"
+    >
+      ☰
+    </button>
+
+
+    <!-- =========================================
+         PANEL DE CONTROLES
+         ========================================= -->
+
+    <aside
+      id="controls"
+      class="controls hidden"
+    >
+
+      <header>
+
+        <strong>
+          CONTROLES
+        </strong>
+
+        <button
+          id="closeBtn"
+          class="close"
+        >
+          ×
+        </button>
+
+      </header>
+
+
+      <!-- =======================================
+           BRILLO
+           ======================================= -->
+
+      <label>
+
+        Brillo
+
+        <output id="brightnessOut">
+          1.20
+        </output>
+
+        <input
+          id="brightness"
+          type="range"
+          min="0.5"
+          max="2.5"
+          step="0.05"
+          value="1.2"
+        >
+
+      </label>
+
+
+      <!-- =======================================
+           CONTRASTE
+           ======================================= -->
+
+      <label>
+
+        Contraste
+
+        <output id="contrastOut">
+          1.35
+        </output>
+
+        <input
+          id="contrast"
+          type="range"
+          min="0.5"
+          max="2.5"
+          step="0.05"
+          value="1.35"
+        >
+
+      </label>
+
+
+      <!-- =======================================
+           GANANCIA
+           ======================================= -->
+
+      <label>
+
+        Ganancia
+
+        <output id="gainOut">
+          1.00
+        </output>
+
+        <input
+          id="gain"
+          type="range"
+          min="0.5"
+          max="3"
+          step="0.05"
+          value="1"
+        >
+
+      </label>
+
+
+      <!-- =======================================
+           ZOOM
+           ======================================= -->
+
+      <label>
+
+        Zoom
+
+        <output id="zoomOut">
+          0.8×
+        </output>
+
+        <input
+          id="zoom"
+          type="range"
+          min="0.8"
+          max="4"
+          step="0.1"
+          value="0.8"
+        >
+
+      </label>
+
+
+      <!-- =======================================
+           BOTONES DE FUNCIONES
+           ======================================= -->
+
+      <div class="grid">
+
+        <button data-action="mode">
+          MODO: VERDE
+        </button>
+
+        <button data-action="vr">
+          VR: OFF
+        </button>
+
+        <button data-action="crosshair">
+          RETÍCULA: ON
+        </button>
+
+        <button data-action="mirror">
+          ESPEJO: OFF
+        </button>
+
+        <button data-action="torch">
+          LINTERNA: OFF
+        </button>
+
+        <button data-action="fullscreen">
+          PANTALLA COMPLETA
+        </button>
+
+      </div>
+
+
+      <!-- =======================================
+           RESTABLECER
+           ======================================= -->
+
+      <button
+        id="resetBtn"
+        class="secondary"
+      >
+        RESTABLECER
+      </button>
+
+
+      <!-- =======================================
+           AVISO
+           ======================================= -->
+
+      <p class="warning">
+
+        Nota: el procesamiento mejora una imagen
+        con poca luz, pero no crea visión infrarroja
+        real. La linterna depende del hardware
+        del teléfono.
+
+      </p>
+
     </aside>
+
   </main>
+
+
+  <!-- ===========================================
+       JAVASCRIPT
+       =========================================== -->
+
   <script src="js/app.js"></script>
+
 </body>
+
 </html>
