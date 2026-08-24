@@ -1,13 +1,7 @@
-/* =====================================================
-   LONWOLF NIGHTVISION VR
-   STYLE V8
-   ===================================================== */
-
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
-
 
 html,
 body {
@@ -20,24 +14,20 @@ body {
 
   overflow: hidden;
 
-  background: #050805;
+  background: #000;
+
+  color: #9cff9c;
 
   font-family:
     Arial,
     Helvetica,
     sans-serif;
 
-  color: #9cff9c;
-
 }
-
 
 body {
-
   touch-action: manipulation;
-
 }
-
 
 #app {
 
@@ -52,11 +42,6 @@ body {
 
 }
 
-
-/* =====================================================
-   VIDEO
-   ===================================================== */
-
 #camera {
 
   position: absolute;
@@ -69,11 +54,6 @@ body {
   pointer-events: none;
 
 }
-
-
-/* =====================================================
-   CANVAS
-   ===================================================== */
 
 #view {
 
@@ -91,9 +71,9 @@ body {
 }
 
 
-/* =====================================================
+/* ==================================================
    HUD
-   ===================================================== */
+   ================================================== */
 
 #hud {
 
@@ -111,7 +91,6 @@ body {
 
 }
 
-
 .hud-top,
 .hud-bottom {
 
@@ -122,121 +101,220 @@ body {
 
   display: flex;
 
-  justify-content: space-between;
+  justify-content:
+    space-between;
 
   padding: 12px 16px;
 
-  font-size: 12px;
-
-  letter-spacing: 1.5px;
+  font-size: 11px;
 
   font-weight: bold;
 
-}
+  letter-spacing: 1.5px;
 
+}
 
 .hud-top {
 
-  top: env(
-    safe-area-inset-top,
-    0px
-  );
+  top:
+    env(
+      safe-area-inset-top,
+      0px
+    );
 
 }
-
 
 .hud-bottom {
 
-  bottom: env(
-    safe-area-inset-bottom,
-    0px
-  );
+  bottom:
+    env(
+      safe-area-inset-bottom,
+      0px
+    );
+
+}
+
+#rangeLegend {
+
+  position: absolute;
+
+  top: 48px;
+
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  display: flex;
+
+  gap: 15px;
+
+  font-size: 8px;
+
+  letter-spacing: 2px;
+
+  opacity: .75;
 
 }
 
 
-/* =====================================================
-   DISTANCIA
-   ===================================================== */
+/* ==================================================
+   RETÍCULA
+   ================================================== */
 
-.distance-hud {
+#reticle {
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 15;
+
+  pointer-events: none;
+
+}
+
+#normalReticle {
+
+  position: absolute;
+
+  inset: 0;
+
+}
+
+#vrReticle {
+
+  display: none;
+
+  position: absolute;
+
+  inset: 0;
+
+}
+
+.vr-eye {
+
+  position: absolute;
+
+  top: 0;
+
+  width: 50%;
+  height: 100%;
+
+}
+
+.vr-eye:first-child {
+  left: 0;
+}
+
+.vr-eye:last-child {
+  right: 0;
+}
+
+
+/* ==================================================
+   CRUZ
+   ================================================== */
+
+.crosshair {
 
   position: absolute;
 
   left: 50%;
+  top: 50%;
 
-  bottom: 55px;
+  width: 1px;
+  height: 1px;
 
-  transform: translateX(-50%);
+  z-index: 100;
 
-  text-align: center;
+}
 
-  padding: 8px 15px;
+.crosshair .horizontal {
 
-  min-width: 150px;
+  position: absolute;
 
-  border: 1px solid rgba(
-    120,
-    255,
-    120,
-    .25
-  );
+  width: 70px;
+  height: 1px;
 
-  background: rgba(
-    0,
-    10,
-    0,
-    .45
-  );
+  left: -35px;
+  top: 0;
 
-  backdrop-filter: blur(3px);
+  background:
+    rgba(
+      140,
+      255,
+      140,
+      .95
+    );
+
+  box-shadow:
+    0 0 4px
+    rgba(
+      100,
+      255,
+      100,
+      .8
+    );
+
+}
+
+.crosshair .vertical {
+
+  position: absolute;
+
+  width: 1px;
+  height: 70px;
+
+  left: 0;
+  top: -35px;
+
+  background:
+    rgba(
+      140,
+      255,
+      140,
+      .95
+    );
+
+  box-shadow:
+    0 0 4px
+    rgba(
+      100,
+      255,
+      100,
+      .8
+    );
+
+}
+
+.center-dot {
+
+  position: absolute;
+
+  width: 5px;
+  height: 5px;
+
+  left: -2.5px;
+  top: -2.5px;
+
+  border-radius: 50%;
+
+  background:
+    #aaffaa;
+
+  box-shadow:
+    0 0 5px
+    #7fff7f;
 
 }
 
 
-.distance-title {
+/* ==================================================
+   ESCALA DINÁMICA
+   ================================================== */
 
-  font-size: 10px;
-
-  letter-spacing: 3px;
-
-}
-
-
-.distance-value {
-
-  font-size: 25px;
-
-  font-weight: bold;
-
-  margin: 2px 0;
-
-}
-
-
-.distance-info {
-
-  font-size: 9px;
-
-  letter-spacing: 1px;
-
-  opacity: .8;
-
-}
-
-
-.hidden {
-
-  display: none !important;
-
-}
-
-
-/* =====================================================
-   RETÍCULA
-   ===================================================== */
-
-#crosshair {
+#rangeScale {
 
   position: absolute;
 
@@ -244,120 +322,261 @@ body {
 
   pointer-events: none;
 
-  z-index: 15;
+  z-index: 50;
 
 }
 
 
-.crosshair-eye {
+.vr-scale {
 
   position: absolute;
 
-  top: 50%;
+  inset: 0;
 
-  width: 50%;
-  height: 50%;
+  pointer-events: none;
 
-  transform: translateY(-50%);
-
-}
-
-
-.crosshair-eye.left {
-
-  left: 0;
+  z-index: 50;
 
 }
 
 
-.crosshair-eye.right {
+/*
+   Cada rectángulo representa un objetivo
+   de 45 x 40 cm visto desde esa distancia.
+*/
 
-  right: 0;
+.dynamic-range-scale {
+
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
 
 }
 
 
-.crosshair-eye span,
-.crosshair-eye i {
+.range-target {
 
   position: absolute;
 
   left: 50%;
   top: 50%;
 
-  transform: translate(
-    -50%,
-    -50%
-  );
-
-  display: block;
-
-}
-
-
-.crosshair-eye span {
-
-  width: 34px;
-  height: 34px;
-
   border:
-
     1px solid
-
     rgba(
-      120,
+      125,
       255,
-      120,
+      125,
       .85
     );
 
-  border-radius: 50%;
+  box-shadow:
+    0 0 3px
+    rgba(
+      100,
+      255,
+      100,
+      .5
+    );
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+
+  min-width: 8px;
+  min-height: 8px;
 
 }
 
 
-.crosshair-eye i {
-
-  width: 52px;
-  height: 1px;
-
-  background:
-    rgba(
-      120,
-      255,
-      120,
-      .85
-    );
-
-}
-
-
-.crosshair-eye i::after {
+.range-target::before,
+.range-target::after {
 
   content: "";
 
   position: absolute;
 
-  width: 1px;
-  height: 52px;
-
-  left: 50%;
-  top: -25px;
-
   background:
     rgba(
-      120,
+      125,
       255,
-      120,
-      .85
+      125,
+      .95
     );
 
 }
 
 
-/* =====================================================
+/*
+   pequeñas extensiones en las esquinas
+*/
+
+.range-target::before {
+
+  left: -1px;
+  top: -1px;
+
+  width: 14px;
+  height: 1px;
+
+}
+
+.range-target::after {
+
+  left: -1px;
+  top: -1px;
+
+  width: 1px;
+  height: 14px;
+
+}
+
+
+/*
+   Etiqueta
+*/
+
+.range-target-label {
+
+  position: absolute;
+
+  right: 3px;
+  top: 3px;
+
+  padding:
+    2px
+    3px;
+
+  font-size: 8px;
+
+  line-height: 1;
+
+  font-weight: bold;
+
+  letter-spacing: 1px;
+
+  color:
+    #aaffaa;
+
+  background:
+    rgba(
+      0,
+      0,
+      0,
+      .55
+    );
+
+  text-shadow:
+    0 0 4px #000;
+
+}
+
+
+/*
+   La caja más cercana puede ser grande.
+   Las más lejanas serán pequeñas.
+*/
+
+.range-target[data-distance="20"] {
+  border-width: 1.5px;
+}
+
+.range-target[data-distance="30"] {
+  border-color:
+    rgba(
+      125,
+      255,
+      125,
+      .90
+    );
+}
+
+.range-target[data-distance="40"] {
+  border-color:
+    rgba(
+      125,
+      255,
+      125,
+      .86
+    );
+}
+
+.range-target[data-distance="50"] {
+  border-color:
+    rgba(
+      125,
+      255,
+      125,
+      .82
+    );
+}
+
+.range-target[data-distance="60"] {
+  border-color:
+    rgba(
+      125,
+      255,
+      125,
+      .76
+    );
+}
+
+.range-target[data-distance="75"] {
+  border-color:
+    rgba(
+      125,
+      255,
+      125,
+      .68
+    );
+}
+
+.range-target[data-distance="100"] {
+  border-color:
+    rgba(
+      125,
+      255,
+      125,
+      .60
+    );
+}
+
+
+/* ==================================================
+   INFORMACIÓN
+   ================================================== */
+
+.reticle-info {
+
+  position: absolute;
+
+  top:
+    calc(
+      50% + 165px
+    );
+
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  font-size: 8px;
+
+  letter-spacing: 2px;
+
+  opacity: .65;
+
+}
+
+
+/* ==================================================
    PANEL INICIAL
-   ===================================================== */
+   ================================================== */
 
 .panel {
 
@@ -374,10 +593,11 @@ body {
       -50%
     );
 
-  width: min(
-    90%,
-    420px
-  );
+  width:
+    min(
+      90%,
+      420px
+    );
 
   padding: 28px;
 
@@ -388,7 +608,7 @@ body {
       2,
       10,
       2,
-      .94
+      .95
     );
 
   border:
@@ -400,17 +620,7 @@ body {
       .3
     );
 
-  box-shadow:
-    0 0 40px
-    rgba(
-      0,
-      255,
-      0,
-      .12
-    );
-
 }
-
 
 .brand {
 
@@ -422,21 +632,17 @@ body {
 
 }
 
-
 .brand span {
 
   display: block;
 
-  color: #8dff8d;
+  font-size: 13px;
 
-  font-size: 14px;
-
-  letter-spacing: 6px;
+  letter-spacing: 5px;
 
   margin-top: 5px;
 
 }
-
 
 .panel p {
 
@@ -448,7 +654,6 @@ body {
 
 }
 
-
 .panel small {
 
   display: block;
@@ -457,20 +662,21 @@ body {
 
   font-size: 9px;
 
-  line-height: 1.5;
-
   opacity: .55;
+
+  line-height: 1.5;
 
 }
 
 
-/* =====================================================
+/* ==================================================
    BOTONES
-   ===================================================== */
+   ================================================== */
 
 button {
 
-  border: 1px solid
+  border:
+    1px solid
     rgba(
       120,
       255,
@@ -486,7 +692,8 @@ button {
       .85
     );
 
-  color: #aaffaa;
+  color:
+    #aaffaa;
 
   padding: 11px;
 
@@ -494,26 +701,20 @@ button {
 
   letter-spacing: 1px;
 
-  cursor: pointer;
-
 }
-
 
 button:active {
-
   transform: scale(.97);
-
 }
-
 
 #startBtn {
-
   width: 100%;
-
-  margin-top: 12px;
-
 }
 
+
+/* ==================================================
+   MENÚ
+   ================================================== */
 
 .roundBtn {
 
@@ -534,18 +735,18 @@ button:active {
   width: 42px;
   height: 42px;
 
-  padding: 0;
-
   border-radius: 50%;
+
+  padding: 0;
 
   font-size: 20px;
 
 }
 
 
-/* =====================================================
-   PANEL CONTROLES
-   ===================================================== */
+/* ==================================================
+   CONTROLES
+   ================================================== */
 
 .controls {
 
@@ -556,10 +757,11 @@ button:active {
   right: 0;
   top: 0;
 
-  width: min(
-    92%,
-    390px
-  );
+  width:
+    min(
+      92%,
+      390px
+    );
 
   height: 100%;
 
@@ -573,12 +775,7 @@ button:active {
       ) + 15px
     )
     15px
-    calc(
-      env(
-        safe-area-inset-bottom,
-        0px
-      ) + 20px
-    );
+    25px;
 
   background:
     rgba(
@@ -599,7 +796,6 @@ button:active {
 
 }
 
-
 .controls header {
 
   display: flex;
@@ -613,34 +809,27 @@ button:active {
 
 }
 
-
 .close {
-
-  border: 0;
 
   background: transparent;
 
+  border: 0;
+
   font-size: 28px;
 
-  padding: 0 5px;
+  padding: 0;
 
 }
-
-
-/* =====================================================
-   SLIDERS
-   ===================================================== */
 
 .controls label {
 
   display: block;
 
-  margin: 14px 0;
+  margin: 15px 0;
 
   font-size: 12px;
 
 }
-
 
 .controls output {
 
@@ -648,23 +837,87 @@ button:active {
 
 }
 
-
 .controls input[type="range"] {
-
-  display: block;
 
   width: 100%;
 
+  display: block;
+
   margin-top: 8px;
 
-  accent-color: #72ff72;
+  accent-color:
+    #72ff72;
 
 }
 
 
-/* =====================================================
+/* ==================================================
+   REFERENCIA
+   ================================================== */
+
+.target-box {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  padding: 12px;
+
+  margin:
+    20px 0
+    10px;
+
+  border:
+    1px solid
+    rgba(
+      120,
+      255,
+      120,
+      .25
+    );
+
+  background:
+    rgba(
+      30,
+      100,
+      30,
+      .08
+    );
+
+  text-align: center;
+
+}
+
+.target-box strong {
+
+  font-size: 9px;
+
+  letter-spacing: 2px;
+
+}
+
+.target-box span {
+
+  font-size: 18px;
+
+  font-weight: bold;
+
+}
+
+.target-box small {
+
+  font-size: 8px;
+
+  opacity: .6;
+
+}
+
+
+/* ==================================================
    GRID
-   ===================================================== */
+   ================================================== */
 
 .grid {
 
@@ -675,10 +928,7 @@ button:active {
 
   gap: 7px;
 
-  margin-top: 20px;
-
 }
-
 
 .grid button {
 
@@ -688,7 +938,6 @@ button:active {
 
 }
 
-
 .secondary {
 
   width: 100%;
@@ -696,7 +945,6 @@ button:active {
   margin-top: 12px;
 
 }
-
 
 .warning {
 
@@ -709,66 +957,104 @@ button:active {
 }
 
 
-/* =====================================================
-   BOTÓN MEDIR VR
-   ===================================================== */
+/* ==================================================
+   OCULTO
+   ================================================== */
 
-.measure-vr {
-
-  position: absolute;
-
-  z-index: 35;
-
-  left: 50%;
-
-  bottom:
-    calc(
-      env(
-        safe-area-inset-bottom,
-        0px
-      ) + 25px
-    );
-
-  transform:
-    translateX(-50%);
-
-  min-width: 90px;
-
-  padding: 10px 18px;
-
-  font-size: 10px;
-
-  letter-spacing: 2px;
-
-  opacity: .85;
-
+.hidden {
+  display: none !important;
 }
 
 
-/* =====================================================
+/* ==================================================
    VR
-   ===================================================== */
+   ================================================== */
 
 body.vr-mode
-.measure-vr {
+#normalReticle {
 
-  bottom:
-    calc(
-      env(
-        safe-area-inset-bottom,
-        0px
-      ) + 45px
-    );
+  display: none;
+
+}
+
+body.vr-mode
+#vrReticle {
+
+  display: block;
 
 }
 
 
+/* ==================================================
+   MODOS DE RETÍCULA
+   ================================================== */
+
+body.mode-red
+.crosshair .horizontal,
+body.mode-red
+.crosshair .vertical {
+
+  background:
+    rgba(
+      255,
+      80,
+      60,
+      .95
+    );
+
+}
+
+body.mode-red
+.center-dot {
+
+  background:
+    #ff5040;
+
+}
+
+body.mode-white
+.crosshair .horizontal,
+body.mode-white
+.crosshair .vertical {
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      .95
+    );
+
+}
+
+body.mode-white
+.center-dot {
+
+  background:
+    #fff;
+
+}
+
+
+/* ==================================================
+   MÓVIL
+   ================================================== */
+
 @media
-  (orientation: landscape) {
+(max-width: 600px) {
 
-  .distance-hud {
+  .range-target-label {
 
-    bottom: 35px;
+    font-size: 7px;
+
+  }
+
+  .reticle-info {
+
+    top:
+      calc(
+        50% + 145px
+      );
 
   }
 
