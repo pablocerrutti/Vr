@@ -1,11 +1,15 @@
-const CACHE = "nightvision-v8";
+const CACHE =
+  "nightvision-v9";
+
 
 const ASSETS = [
+
   "./",
   "./index.html",
   "./css/style.css",
   "./js/app.js",
   "./manifest.json"
+
 ];
 
 
@@ -19,7 +23,9 @@ self.addEventListener(
         .open(CACHE)
         .then(
           cache =>
-            cache.addAll(ASSETS)
+            cache.addAll(
+              ASSETS
+            )
         )
 
     );
@@ -70,7 +76,9 @@ self.addEventListener(
     event.respondWith(
 
       caches
-        .match(event.request)
+        .match(
+          event.request
+        )
         .then(
           cached => {
 
@@ -84,24 +92,26 @@ self.addEventListener(
             return fetch(
               event.request
             )
-              .then(response => {
+              .then(
+                response => {
 
-                const copy =
-                  response.clone();
+                  const copy =
+                    response.clone();
 
-                caches
-                  .open(CACHE)
-                  .then(
-                    cache =>
-                      cache.put(
-                        event.request,
-                        copy
-                      )
-                  );
+                  caches
+                    .open(CACHE)
+                    .then(
+                      cache =>
+                        cache.put(
+                          event.request,
+                          copy
+                        )
+                    );
 
-                return response;
+                  return response;
 
-              })
+                }
+              )
               .catch(
                 () =>
                   caches.match(
