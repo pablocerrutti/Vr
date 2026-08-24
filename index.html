@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
     <meta charset="UTF-8">
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        content="width=device-width,
+                 initial-scale=1.0,
+                 maximum-scale=1.0,
+                 user-scalable=no,
+                 viewport-fit=cover"
     >
 
     <meta
@@ -25,17 +30,12 @@
 
     <meta
         name="apple-mobile-web-app-title"
-        content="Visor Nocturno"
+        content="Night Vision"
     >
 
     <meta
         name="mobile-web-app-capable"
         content="yes"
-    >
-
-    <meta
-        name="application-name"
-        content="Visor Nocturno"
     >
 
     <link
@@ -48,111 +48,80 @@
         href="./style.css"
     >
 
-    <title>Visor Nocturno</title>
+    <title>Night Vision</title>
+
 </head>
 
 <body>
 
-    <!-- =========================================
-         CONTENEDOR PRINCIPAL
-    ========================================== -->
+    <div id="app">
 
-    <main id="visor">
-
-        <!-- =====================================
+        <!-- =================================
              CÁMARA
-        ====================================== -->
+        ================================== -->
 
         <video
-            id="video"
+            id="camera"
             autoplay
             playsinline
             muted
         ></video>
 
 
-        <!-- =====================================
-             CAPA DE VISIÓN NOCTURNA
-        ====================================== -->
+        <!-- =================================
+             PROCESAMIENTO DE IMAGEN
+        ================================== -->
 
         <canvas
-            id="nightVisionCanvas"
+            id="nightCanvas"
         ></canvas>
 
 
-        <!-- =====================================
-             RETÍCULA
-        ====================================== -->
+        <!-- =================================
+             RETÍCULA VISUAL
+        ================================== -->
 
         <div
             id="reticle"
-            class="reticle"
+            class="reticle hidden"
         >
 
-            <!-- Línea vertical -->
-            <div
-                class="reticle-vertical"
-            ></div>
+            <div class="reticle-horizontal"></div>
 
-            <!-- Línea horizontal -->
-            <div
-                class="reticle-horizontal"
-            ></div>
+            <div class="reticle-vertical"></div>
 
-            <!-- Centro -->
-            <div
-                class="reticle-center"
-            ></div>
+            <div class="reticle-center"></div>
 
-            <!-- =================================
-                 ESCALA DE DISTANCIA
-            ================================== -->
+        </div>
 
-            <div
-                id="rangeScale"
-                class="range-scale"
-            >
 
-                <div
-                    class="range-line range-20"
-                >
-                    <span>20</span>
+        <!-- =================================
+             INFORMACIÓN
+        ================================== -->
+
+        <div id="hud">
+
+            <div id="hudTop">
+
+                <span id="appTitle">
+                    NIGHT VISION
+                </span>
+
+                <span id="cameraStatus">
+                    OFFLINE
+                </span>
+
+            </div>
+
+
+            <div id="loading">
+
+                <div class="loading-title">
+                    NIGHT VISION
                 </div>
 
-                <div
-                    class="range-line range-30"
-                >
-                    <span>30</span>
-                </div>
-
-                <div
-                    class="range-line range-40"
-                >
-                    <span>40</span>
-                </div>
-
-                <div
-                    class="range-line range-50"
-                >
-                    <span>50</span>
-                </div>
-
-                <div
-                    class="range-line range-60"
-                >
-                    <span>60</span>
-                </div>
-
-                <div
-                    class="range-line range-75"
-                >
-                    <span>75</span>
-                </div>
-
-                <div
-                    class="range-line range-100"
-                >
-                    <span>100</span>
+                <div class="loading-text">
+                    Iniciando cámara...
                 </div>
 
             </div>
@@ -160,91 +129,39 @@
         </div>
 
 
-        <!-- =====================================
-             INFORMACIÓN SUPERIOR
-        ====================================== -->
-
-        <div
-            id="topInfo"
-            class="top-info"
-        >
-
-            <span id="appName">
-                NIGHT VISION
-            </span>
-
-            <span id="status">
-                OFFLINE
-            </span>
-
-        </div>
-
-
-        <!-- =====================================
-             INFORMACIÓN DE DISTANCIA
-        ====================================== -->
-
-        <div
-            id="distanceInfo"
-            class="distance-info"
-        >
-            OBJETIVO 45 × 40 CM
-        </div>
-
-
-        <!-- =====================================
+        <!-- =================================
              CONTROLES
-        ====================================== -->
+        ================================== -->
 
-        <div
-            id="controls"
-            class="controls"
-        >
-
-            <!-- Iniciar cámara -->
+        <div id="controls">
 
             <button
-                id="startCamera"
+                id="cameraButton"
+                class="control-button"
                 type="button"
             >
                 CÁMARA
             </button>
 
-
-            <!-- Visión nocturna -->
-
             <button
-                id="nightVision"
+                id="nightButton"
+                class="control-button active"
                 type="button"
             >
                 NV
             </button>
 
-
-            <!-- Retícula -->
-
             <button
-                id="toggleReticle"
+                id="reticleButton"
+                class="control-button"
                 type="button"
             >
                 RETÍCULA
             </button>
 
-
-            <!-- Escala -->
-
             <button
-                id="toggleScale"
-                type="button"
-            >
-                ESCALA
-            </button>
-
-
-            <!-- Cambio de cámara -->
-
-            <button
-                id="switchCamera"
+                id="switchButton"
+                class="control-button small"
                 type="button"
             >
                 ↻
@@ -253,30 +170,27 @@
         </div>
 
 
-        <!-- =====================================
-             INDICADOR DE VERSIÓN
-        ====================================== -->
+        <!-- =================================
+             VERSIÓN
+        ================================== -->
 
-        <div
-            id="version"
-            class="version"
-        >
-            V2
+        <div id="version">
+            V1.0.0
         </div>
 
-    </main>
+    </div>
 
 
-    <!-- =========================================
+    <!-- =====================================
          JAVASCRIPT PRINCIPAL
-    ========================================== -->
+    ====================================== -->
 
     <script src="./app.js"></script>
 
 
-    <!-- =========================================
-         SERVICE WORKER / ACTUALIZACIONES
-    ========================================== -->
+    <!-- =====================================
+         SERVICE WORKER
+    ====================================== -->
 
     <script>
 
@@ -287,74 +201,25 @@
                 .then(registration => {
 
                     console.log(
-                        "Service Worker registrado:",
-                        registration.scope
+                        "Service Worker activo"
                     );
 
-
                     /*
-                     * Comprobar periódicamente si existe
-                     * una nueva versión.
+                     * Comprobar actualizaciones
+                     * periódicamente.
                      */
 
                     setInterval(() => {
 
                         registration.update();
 
-                    }, 60 * 1000);
-
-
-                    /*
-                     * Detectar una nueva versión.
-                     */
-
-                    registration.addEventListener(
-                        "updatefound",
-                        () => {
-
-                            const newWorker =
-                                registration.installing;
-
-                            if (!newWorker) {
-                                return;
-                            }
-
-
-                            newWorker.addEventListener(
-                                "statechange",
-                                () => {
-
-                                    if (
-                                        newWorker.state ===
-                                        "installed" &&
-                                        navigator
-                                            .serviceWorker
-                                            .controller
-                                    ) {
-
-                                        /*
-                                         * Nueva versión
-                                         * disponible.
-                                         */
-
-                                        newWorker.postMessage({
-                                            type:
-                                                "SKIP_WAITING"
-                                        });
-
-                                    }
-
-                                }
-                            );
-
-                        }
-                    );
+                    }, 60000);
 
                 })
                 .catch(error => {
 
                     console.error(
-                        "Error registrando Service Worker:",
+                        "Service Worker:",
                         error
                     );
 
@@ -362,8 +227,8 @@
 
 
             /*
-             * Cuando el nuevo Service Worker toma
-             * el control, recargamos la aplicación.
+             * Cuando una versión nueva toma
+             * el control, recargar.
              */
 
             navigator.serviceWorker.addEventListener(
