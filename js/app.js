@@ -1,14 +1,32 @@
+/* =========================================================
+   LONWOLF NIGHTVISION VR
+   APP.JS — OPTIMIZADO 30 FPS
+   ========================================================= */
+
 const video = document.getElementById("camera");
 const canvas = document.getElementById("view");
-const ctx = canvas.getContext("2d", { alpha: false });
+const ctx = canvas.getContext("2d", {
+  alpha: false
+});
 
 const $ = id => document.getElementById(id);
 
+
+/* =========================================================
+   ESTADO
+   ========================================================= */
+
 let stream = null;
 let track = null;
+
 let raf = 0;
-let last = performance.now();
+
+let lastFrameTime = 0;
+let fpsTime = performance.now();
 let frames = 0;
+
+const TARGET_FPS = 30;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
 let mode = 0;
 let vr = false;
@@ -17,23 +35,61 @@ let mirror = false;
 let torch = false;
 
 
-/* =========================================
+/* =========================================================
    CONFIGURACIÓN
-   ========================================= */
+   ========================================================= */
+
 const state = {
+
   brightness: 1.2,
   contrast: 1.35,
   gain: 1,
   zoom: 0.8
+
 };
 
-console.log("NIGHTVISION APP NUEVA - ZOOM 0.8");
-alert("APP NUEVA - ZOOM 0.8");
+
+/* =========================================================
+   CANVAS DE PROCESAMIENTO
+   =========================================================
+
+   IMPORTANTE:
+
+   No procesamos toda la pantalla.
+
+   Procesamos una imagen pequeña y luego
+   la ampliamos.
+
+   Esto reduce enormemente el trabajo
+   de getImageData / putImageData.
+   ========================================================= */
+
+const workCanvas =
+  document.createElement("canvas");
+
+const workCtx =
+  workCanvas.getContext("2d", {
+    willReadFrequently: true
+  });
 
 
-/* =========================================
+/*
+   Resolución máxima interna.
+
+   640x360 es mucho más liviano que
+   procesar 1920x1080 en cada frame.
+*/
+
+const WORK_WIDTH = 640;
+const WORK_HEIGHT = 360;
+
+workCanvas.width = WORK_WIDTH;
+workCanvas.height = WORK_HEIGHT;
+
+
+/* =========================================================
    CARGAR CONFIGURACIÓN
-   ========================================= */
+   ========================================================= */
 
 function loadState() {
 
@@ -54,7 +110,7 @@ function loadState() {
   } catch (e) {
 
     console.warn(
-      "No se pudo cargar la configuración:",
+      "No se pudo cargar la configuración",
       e
     );
 
@@ -62,7 +118,7 @@ function loadState() {
 
 
   /*
-  El zoom nunca puede ser inferior a 0.8
+     Seguridad del zoom
   */
 
   if (
@@ -75,28 +131,39 @@ function loadState() {
   }
 
 
-  /*
-  Actualizar controles
-  */
+  if (state.zoom > 4) {
+
+    state.zoom = 4;
+
+  }
+
+
+  updateControls();
+
+}
+
+
+/* =========================================================
+   ACTUALIZAR CONTROLES
+   ========================================================= */
+
+function updateControls() {
 
   for (
-    const k of Object.keys(state)
+    const key of Object.keys(state)
   ) {
 
-    const control = $(k);
+    const element = $(key);
 
-    if (control) {
+    if (element) {
 
-      control.value = state[k];
+      element.value =
+        state[key];
 
     }
 
   }
 
-
-  /*
-  Actualizar indicadores
-  */
 
   if ($("brightnessOut")) {
 
@@ -105,6 +172,7 @@ function loadState() {
 
   }
 
+
   if ($("contrastOut")) {
 
     $("contrastOut").textContent =
@@ -112,12 +180,14 @@ function loadState() {
 
   }
 
+
   if ($("gainOut")) {
 
     $("gainOut").textContent =
       Number(state.gain).toFixed(2);
 
   }
+
 
   if ($("zoomOut")) {
 
@@ -129,9 +199,9 @@ function loadState() {
 }
 
 
-/* =========================================
+/* =========================================================
    GUARDAR CONFIGURACIÓN
-   ========================================= */
+   ========================================================= */
 
 function saveState() {
 
@@ -145,7 +215,7 @@ function saveState() {
   } catch (e) {
 
     console.warn(
-      "No se pudo guardar la configuración:",
+      "No se pudo guardar configuración",
       e
     );
 
@@ -154,16 +224,12 @@ function saveState() {
 }
 
 
-/* =========================================
-   INICIALIZAR
-   ========================================= */
-
 loadState();
 
 
-/* =========================================
+/* =========================================================
    INICIAR CÁMARA
-   ========================================= */
+   ========================================================= */
 
 async function startCamera() {
 
@@ -172,7 +238,7 @@ async function startCamera() {
     if (!window.isSecureContext) {
 
       throw new Error(
-        "La cámara del navegador necesita HTTPS o localhost."
+        "La cámara requiere HTTPS o localhost."
       );
 
     }
@@ -187,12 +253,21 @@ async function startCamera() {
             ideal: "environment"
           },
 
+          /*
+             Pedimos una resolución razonable.
+          */
+
           width: {
-            ideal: 1920
+            ideal: 1280
           },
 
           height: {
-            ideal: 1080
+            ideal: 720
+          },
+
+          frameRate: {
+            ideal: 30,
+            max: 30
           }
 
         },
@@ -202,13 +277,40 @@ async function startCamera() {
       });
 
 
-    video.srcObject = stream;
+    video.srcObject =
+      stream;
+
 
     await video.play();
 
 
     track =
       stream.getVideoTracks()[0];
+
+
+    /*
+       Intentar mantener 30 FPS
+    */
+
+    try {
+
+      await track.applyConstraints({
+
+        frameRate: {
+          ideal: 30,
+          max: 30
+        }
+
+      });
+
+    } catch (e) {
+
+      console.warn(
+        "No se pudo fijar 30 FPS de cámara",
+        e
+      );
+
+    }
 
 
     if ($("startPanel")) {
@@ -230,19 +332,29 @@ async function startCamera() {
 
     resize();
 
-    cancelAnimationFrame(raf);
 
-    last =
+    cancelAnimationFrame(
+      raf
+    );
+
+
+    lastFrameTime =
+      performance.now();
+
+    fpsTime =
       performance.now();
 
     frames = 0;
 
+
     render();
 
+  }
 
-  } catch (e) {
+  catch (e) {
 
     console.error(e);
+
 
     if ($("status")) {
 
@@ -251,9 +363,10 @@ async function startCamera() {
 
     }
 
+
     alert(
       e.message ||
-      "No se pudo acceder a la cámara. Revisa los permisos del navegador."
+      "No se pudo acceder a la cámara."
     );
 
   }
@@ -261,9 +374,9 @@ async function startCamera() {
 }
 
 
-/* =========================================
-   REDIMENSIONAR CANVAS
-   ========================================= */
+/* =========================================================
+   RESIZE
+   ========================================================= */
 
 function resize() {
 
@@ -277,43 +390,34 @@ function resize() {
   canvas.width =
     Math.max(
       640,
-      Math.floor(innerWidth * dpr)
+      Math.floor(
+        innerWidth * dpr
+      )
     );
 
 
   canvas.height =
     Math.max(
       360,
-      Math.floor(innerHeight * dpr)
+      Math.floor(
+        innerHeight * dpr
+      )
     );
 
 }
 
 
-addEventListener(
+window.addEventListener(
   "resize",
   resize
 );
 
 
-/* =========================================
-   PROCESAR FRAME
-   ========================================= */
+/* =========================================================
+   CALCULAR ÁREA DE RECORTE
+   ========================================================= */
 
-function processFrame() {
-
-  if (!video.videoWidth) {
-
-    return;
-
-  }
-
-
-  const w =
-    canvas.width;
-
-  const h =
-    canvas.height;
+function getSourceCrop() {
 
   const vw =
     video.videoWidth;
@@ -322,41 +426,44 @@ function processFrame() {
     video.videoHeight;
 
 
-  const aspect =
-    w / h;
+  const screenAspect =
+    canvas.width /
+    canvas.height;
 
-  const srcAspect =
+
+  const sourceAspect =
     vw / vh;
 
 
   /*
-  0.8 = mayor campo de visión
-  1.0 = referencia
-  >1.0 = ampliación
+     0.8 = campo más amplio
+     1.0 = referencia
+     >1 = zoom
   */
 
   const zoom =
     Math.max(
       0.8,
-      Number(state.zoom) || 0.8
+      Math.min(
+        4,
+        Number(state.zoom) || 0.8
+      )
     );
 
 
   let sw;
   let sh;
-  let sx;
-  let sy;
 
 
   if (
-    srcAspect > aspect
+    sourceAspect > screenAspect
   ) {
 
     sh =
       vh / zoom;
 
     sw =
-      sh * aspect;
+      sh * screenAspect;
 
   } else {
 
@@ -364,230 +471,139 @@ function processFrame() {
       vw / zoom;
 
     sh =
-      sw / aspect;
+      sw / screenAspect;
 
   }
 
 
   /*
-  Evitar salir de los límites de la imagen
+     Asegurar límites
   */
 
   sw =
     Math.min(
-      sw,
-      vw
+      vw,
+      Math.max(
+        1,
+        sw
+      )
     );
+
 
   sh =
     Math.min(
-      sh,
-      vh
+      vh,
+      Math.max(
+        1,
+        sh
+      )
     );
 
 
-  /*
-  Centrar imagen
-  */
-
-  sx =
+  const sx =
     (vw - sw) / 2;
 
-  sy =
+
+  const sy =
     (vh - sh) / 2;
 
 
-  /*
-  Limitar coordenadas
-  */
-
-  sx =
-    Math.max(
-      0,
-      Math.min(
-        sx,
-        vw - sw
-      )
-    );
-
-  sy =
-    Math.max(
-      0,
-      Math.min(
-        sy,
-        vh - sh
-      )
-    );
-
-
-  ctx.save();
-
-
-  /* =======================================
-     ESPEJO
-     ======================================= */
-
-  if (mirror) {
-
-    ctx.translate(
-      w,
-      0
-    );
-
-    ctx.scale(
-      -1,
-      1
-    );
-
-  }
-
-
-  /* =======================================
-     VR
-     ======================================= */
-
-  if (vr) {
-
-    drawEye(
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      w / 2,
-      h
-    );
-
-
-    drawEye(
-      sx,
-      sy,
-      sw,
-      sh,
-      w / 2,
-      w / 2,
-      h
-    );
-
-  } else {
-
-    drawEye(
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      w,
-      h
-    );
-
-  }
-
-
-  ctx.restore();
+  return {
+    sx,
+    sy,
+    sw,
+    sh
+  };
 
 }
 
 
-/* =========================================
+/* =========================================================
    PROCESAR IMAGEN
-   ========================================= */
+   ========================================================= */
 
-function drawEye(
-  sx,
-  sy,
-  sw,
-  sh,
-  dx,
-  dw,
-  dh
-) {
+function processImage() {
 
-  const temp =
-    document.createElement(
-      "canvas"
-    );
+  if (!video.videoWidth) {
+
+    return;
+
+  }
 
 
-  temp.width =
-    Math.max(
-      1,
-      Math.floor(dw)
-    );
+  const crop =
+    getSourceCrop();
 
 
-  temp.height =
-    Math.max(
-      1,
-      Math.floor(dh)
-    );
+  /*
+     Dibujar cámara en canvas pequeño
+  */
 
+  workCtx.drawImage(
 
-  const t =
-    temp.getContext(
-      "2d",
-      {
-        willReadFrequently: true
-      }
-    );
-
-
-  t.drawImage(
     video,
-    sx,
-    sy,
-    sw,
-    sh,
+
+    crop.sx,
+    crop.sy,
+    crop.sw,
+    crop.sh,
+
     0,
     0,
-    temp.width,
-    temp.height
+    WORK_WIDTH,
+    WORK_HEIGHT
+
   );
 
 
-  const img =
-    t.getImageData(
+  /*
+     Obtener píxeles
+  */
+
+  const image =
+    workCtx.getImageData(
       0,
       0,
-      temp.width,
-      temp.height
+      WORK_WIDTH,
+      WORK_HEIGHT
     );
 
 
-  const d =
-    img.data;
+  const data =
+    image.data;
 
 
   const brightness =
     Number(state.brightness);
 
-  const gain =
-    Number(state.gain);
-
   const contrast =
     Number(state.contrast);
 
+  const gain =
+    Number(state.gain);
+
+
+  /*
+     Procesamiento de color
+  */
 
   for (
     let i = 0;
-    i < d.length;
+    i < data.length;
     i += 4
   ) {
 
-    /*
-    Luminancia
-    */
-
     let y =
+
       (
-        0.2126 * d[i] +
-        0.7152 * d[i + 1] +
-        0.0722 * d[i + 2]
+        0.2126 * data[i] +
+        0.7152 * data[i + 1] +
+        0.0722 * data[i + 2]
       ) / 255;
 
 
     /*
-    Contraste
+       Contraste
     */
 
     y =
@@ -598,7 +614,7 @@ function drawEye(
 
 
     /*
-    Brillo y ganancia
+       Brillo + ganancia
     */
 
     y *=
@@ -607,7 +623,7 @@ function drawEye(
 
 
     /*
-    Limitar
+       Limitar
     */
 
     y =
@@ -620,79 +636,79 @@ function drawEye(
       );
 
 
-    /* =====================================
-       VERDE
-       ===================================== */
+    /*
+       MODO VERDE
+    */
 
     if (mode === 0) {
 
-      d[i] =
+      data[i] =
         y * 105;
 
-      d[i + 1] =
+      data[i + 1] =
         y * 255;
 
-      d[i + 2] =
+      data[i + 2] =
         y * 115;
 
     }
 
 
-    /* =====================================
+    /*
        BLANCO Y NEGRO
-       ===================================== */
+    */
 
     else if (mode === 1) {
 
       const q =
         y * 255;
 
-      d[i] =
+      data[i] =
         q;
 
-      d[i + 1] =
+      data[i + 1] =
         q;
 
-      d[i + 2] =
+      data[i + 2] =
         q;
 
     }
 
 
-    /* =====================================
+    /*
        ROJO
-       ===================================== */
+    */
 
     else if (mode === 2) {
 
-      d[i] =
+      data[i] =
         y * 255;
 
-      d[i + 1] =
+      data[i + 1] =
         y * 65;
 
-      d[i + 2] =
+      data[i + 2] =
         y * 30;
 
     }
 
 
-    /* =====================================
+    /*
        INVERSO
-       ===================================== */
+    */
 
     else {
 
       const q =
         (1 - y) * 255;
 
-      d[i] =
+      data[i] =
         q;
 
-      d[i + 1] =
+      data[i + 1] =
         q;
 
-      d[i + 2] =
+      data[i + 2] =
         q;
 
     }
@@ -700,41 +716,166 @@ function drawEye(
   }
 
 
-  t.putImageData(
-    img,
+  /*
+     Volver a poner los píxeles
+  */
+
+  workCtx.putImageData(
+    image,
     0,
     0
   );
 
 
-  ctx.drawImage(
-    temp,
-    dx,
+  /*
+     Limpiar pantalla
+  */
+
+  ctx.clearRect(
     0,
-    dw,
-    dh
+    0,
+    canvas.width,
+    canvas.height
   );
+
+
+  /*
+     Espejo
+  */
+
+  ctx.save();
+
+
+  if (mirror) {
+
+    ctx.translate(
+      canvas.width,
+      0
+    );
+
+    ctx.scale(
+      -1,
+      1
+    );
+
+  }
+
+
+  /*
+     VR
+  */
+
+  if (vr) {
+
+    const half =
+      canvas.width / 2;
+
+
+    ctx.drawImage(
+
+      workCanvas,
+
+      0,
+      0,
+      WORK_WIDTH,
+      WORK_HEIGHT,
+
+      0,
+      0,
+      half,
+      canvas.height
+
+    );
+
+
+    ctx.drawImage(
+
+      workCanvas,
+
+      0,
+      0,
+      WORK_WIDTH,
+      WORK_HEIGHT,
+
+      half,
+      0,
+      half,
+      canvas.height
+
+    );
+
+  }
+
+  else {
+
+    ctx.drawImage(
+
+      workCanvas,
+
+      0,
+      0,
+      WORK_WIDTH,
+      WORK_HEIGHT,
+
+      0,
+      0,
+      canvas.width,
+      canvas.height
+
+    );
+
+  }
+
+
+  ctx.restore();
 
 }
 
 
-/* =========================================
-   RENDER
-   ========================================= */
+/* =========================================================
+   RENDER A 30 FPS
+   ========================================================= */
 
-function render() {
+function render(timestamp) {
 
-  processFrame();
+  if (!timestamp) {
 
-  frames++;
+    timestamp =
+      performance.now();
+
+  }
 
 
-  const now =
-    performance.now();
-
+  /*
+     Limitar a aproximadamente 30 FPS
+  */
 
   if (
-    now - last > 1000
+    timestamp -
+    lastFrameTime >=
+    FRAME_INTERVAL
+  ) {
+
+    lastFrameTime =
+      timestamp;
+
+
+    processImage();
+
+
+    frames++;
+
+  }
+
+
+  /*
+     Contador FPS
+  */
+
+  if (
+    timestamp -
+    fpsTime >=
+    1000
   ) {
 
     if ($("fps")) {
@@ -747,7 +888,8 @@ function render() {
 
     frames = 0;
 
-    last = now;
+    fpsTime =
+      timestamp;
 
   }
 
@@ -760,9 +902,9 @@ function render() {
 }
 
 
-/* =========================================
-   BOTÓN CÁMARA
-   ========================================= */
+/* =========================================================
+   BOTÓN ACTIVAR
+   ========================================================= */
 
 if ($("startBtn")) {
 
@@ -772,51 +914,43 @@ if ($("startBtn")) {
 }
 
 
-/* =========================================
+/* =========================================================
    MENÚ
-   ========================================= */
+   ========================================================= */
 
 if ($("menuBtn")) {
 
   $("menuBtn").onclick = () => {
 
-    if ($("controls")) {
-
-      $("controls")
-        .classList
-        .remove("hidden");
-
-    }
+    $("controls")
+      ?.classList
+      .remove("hidden");
 
   };
 
 }
 
 
-/* =========================================
+/* =========================================================
    CERRAR MENÚ
-   ========================================= */
+   ========================================================= */
 
 if ($("closeBtn")) {
 
   $("closeBtn").onclick = () => {
 
-    if ($("controls")) {
-
-      $("controls")
-        .classList
-        .add("hidden");
-
-    }
+    $("controls")
+      ?.classList
+      .add("hidden");
 
   };
 
 }
 
 
-/* =========================================
-   CONTROLES
-   ========================================= */
+/* =========================================================
+   SLIDERS
+   ========================================================= */
 
 for (
   const id of [
@@ -838,91 +972,96 @@ for (
   }
 
 
-  control.oninput = () => {
+  control.addEventListener(
+    "input",
+    () => {
 
-    state[id] =
-      Number(
-        control.value
-      );
-
-
-    /*
-    Zoom mínimo 0.8
-    */
-
-    if (
-      id === "zoom" &&
-      state.zoom < 0.8
-    ) {
-
-      state.zoom =
-        0.8;
-
-      control.value =
-        0.8;
-
-    }
+      state[id] =
+        Number(
+          control.value
+        );
 
 
-    const output =
-      $(`${id}Out`);
-
-
-    if (output) {
+      /*
+         Protección zoom
+      */
 
       if (
         id === "zoom"
       ) {
 
-        output.textContent =
-          state.zoom.toFixed(1) +
-          "×";
-
-      } else {
-
-        output.textContent =
-          state[id].toFixed(2);
+        state.zoom =
+          Math.max(
+            0.8,
+            Math.min(
+              4,
+              state.zoom
+            )
+          );
 
       }
 
+
+      /*
+         Mostrar valor
+      */
+
+      const output =
+        $(`${id}Out`);
+
+
+      if (output) {
+
+        output.textContent =
+
+          id === "zoom"
+
+            ? state.zoom.toFixed(1) + "×"
+
+            : state[id].toFixed(2);
+
+      }
+
+
+      saveState();
+
     }
-
-
-    saveState();
-
-  };
+  );
 
 }
 
 
-/* =========================================
-   ACCIONES
-   ========================================= */
+/* =========================================================
+   BOTONES DE ACCIÓN
+   ========================================================= */
 
 document
   .querySelectorAll(
     "[data-action]"
   )
-  .forEach(btn => {
+  .forEach(button => {
 
-    btn.onclick =
+    button.addEventListener(
+      "click",
       async () => {
 
-        const a =
-          btn.dataset.action;
+        const action =
+          button.dataset.action;
 
 
-        /* MODO */
+        /* ---------------------------------
+           MODO
+        --------------------------------- */
 
         if (
-          a === "mode"
+          action === "mode"
         ) {
 
           mode =
             (mode + 1) % 4;
 
 
-          btn.textContent =
+          button.textContent =
             [
               "MODO: VERDE",
               "MODO: B/N",
@@ -933,17 +1072,19 @@ document
         }
 
 
-        /* VR */
+        /* ---------------------------------
+           VR
+        --------------------------------- */
 
         if (
-          a === "vr"
+          action === "vr"
         ) {
 
           vr =
             !vr;
 
 
-          btn.textContent =
+          button.textContent =
             "VR: " +
             (
               vr
@@ -967,10 +1108,12 @@ document
         }
 
 
-        /* RETÍCULA */
+        /* ---------------------------------
+           RETÍCULA
+        --------------------------------- */
 
         if (
-          a === "crosshair"
+          action === "crosshair"
         ) {
 
           cross =
@@ -987,7 +1130,7 @@ document
           }
 
 
-          btn.textContent =
+          button.textContent =
             "RETÍCULA: " +
             (
               cross
@@ -998,17 +1141,19 @@ document
         }
 
 
-        /* ESPEJO */
+        /* ---------------------------------
+           ESPEJO
+        --------------------------------- */
 
         if (
-          a === "mirror"
+          action === "mirror"
         ) {
 
           mirror =
             !mirror;
 
 
-          btn.textContent =
+          button.textContent =
             "ESPEJO: " +
             (
               mirror
@@ -1019,10 +1164,12 @@ document
         }
 
 
-        /* PANTALLA COMPLETA */
+        /* ---------------------------------
+           PANTALLA COMPLETA
+        --------------------------------- */
 
         if (
-          a === "fullscreen"
+          action === "fullscreen"
         ) {
 
           try {
@@ -1033,7 +1180,9 @@ document
 
               await document.exitFullscreen?.();
 
-            } else {
+            }
+
+            else {
 
               await document
                 .documentElement
@@ -1041,10 +1190,12 @@ document
 
             }
 
-          } catch (e) {
+          }
+
+          catch (e) {
 
             console.warn(
-              "Fullscreen no disponible:",
+              "Fullscreen no disponible",
               e
             );
 
@@ -1053,21 +1204,33 @@ document
         }
 
 
-        /* LINTERNA */
+        /* ---------------------------------
+           LINTERNA
+        --------------------------------- */
 
         if (
-          a === "torch" &&
-          track
+          action === "torch"
         ) {
+
+          if (!track) {
+
+            alert(
+              "Primero activa la cámara."
+            );
+
+            return;
+
+          }
+
 
           try {
 
-            const caps =
+            const capabilities =
               track.getCapabilities?.();
 
 
             if (
-              caps?.torch
+              capabilities?.torch
             ) {
 
               torch =
@@ -1085,7 +1248,7 @@ document
               });
 
 
-              btn.textContent =
+              button.textContent =
                 "LINTERNA: " +
                 (
                   torch
@@ -1093,7 +1256,9 @@ document
                     : "OFF"
                 );
 
-            } else {
+            }
+
+            else {
 
               alert(
                 "La cámara de este teléfono/navegador no expone control de linterna."
@@ -1101,10 +1266,12 @@ document
 
             }
 
-          } catch (e) {
+          }
+
+          catch (e) {
 
             console.warn(
-              "No se pudo controlar la linterna:",
+              "No se pudo activar la linterna",
               e
             );
 
@@ -1112,14 +1279,15 @@ document
 
         }
 
-      };
+      }
+    );
 
   });
 
 
-/* =========================================
+/* =========================================================
    RESTABLECER
-   ========================================= */
+   ========================================================= */
 
 if ($("resetBtn")) {
 
@@ -1138,60 +1306,16 @@ if ($("resetBtn")) {
 
     saveState();
 
-
-    for (
-      const k of Object.keys(state)
-    ) {
-
-      if ($(k)) {
-
-        $(k).value =
-          state[k];
-
-      }
-
-    }
-
-
-    if ($("brightnessOut")) {
-
-      $("brightnessOut").textContent =
-        "1.20";
-
-    }
-
-
-    if ($("contrastOut")) {
-
-      $("contrastOut").textContent =
-        "1.35";
-
-    }
-
-
-    if ($("gainOut")) {
-
-      $("gainOut").textContent =
-        "1.00";
-
-    }
-
-
-    if ($("zoomOut")) {
-
-      $("zoomOut").textContent =
-        "0.8×";
-
-    }
+    updateControls();
 
   };
 
 }
 
 
-/* =========================================
-   DOBLE TOQUE → PANTALLA COMPLETA
-   ========================================= */
+/* =========================================================
+   DOBLE TOQUE → FULLSCREEN
+   ========================================================= */
 
 document.addEventListener(
   "dblclick",
@@ -1205,9 +1329,9 @@ document.addEventListener(
 );
 
 
-/* =========================================
-   DETENER CÁMARA
-   ========================================= */
+/* =========================================================
+   CERRAR CÁMARA AL SALIR
+   ========================================================= */
 
 window.addEventListener(
   "pagehide",
@@ -1218,7 +1342,7 @@ window.addEventListener(
       stream
         .getTracks()
         .forEach(
-          t => t.stop()
+          track => track.stop()
         );
 
     }
@@ -1227,21 +1351,23 @@ window.addEventListener(
 );
 
 
-/* =========================================
+/* =========================================================
    SERVICE WORKER
-   ========================================= */
+   ========================================================= */
 
 if (
   "serviceWorker" in navigator
 ) {
 
   navigator.serviceWorker
-    .register("./sw.js")
+    .register(
+      "./sw.js"
+    )
     .catch(
-      e =>
+      error =>
         console.warn(
           "Service Worker:",
-          e
+          error
         )
     );
 
