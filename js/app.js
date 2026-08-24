@@ -17,37 +17,28 @@ let mirror = false;
 let torch = false;
 
 
-/*
-====================================================
-CONFIGURACIÓN
-====================================================
-*/
+/* =========================================
+   CONFIGURACIÓN
+   ========================================= */
 
 const state = {
   brightness: 1.2,
   contrast: 1.35,
   gain: 1,
-  zoom: 0.9
+  zoom: 0.8
 };
 
 
-/*
-====================================================
-CARGAR CONFIGURACIÓN
-====================================================
-*/
+/* =========================================
+   CARGAR CONFIGURACIÓN
+   ========================================= */
 
 function loadState() {
 
   try {
 
-    /*
-    Usamos nvvr_v2 para evitar recuperar
-    el antiguo zoom 1.0×
-    */
-
     const saved =
-      localStorage.getItem("nvvr_v2");
+      localStorage.getItem("nvvr_v3");
 
     if (saved) {
 
@@ -69,15 +60,15 @@ function loadState() {
 
 
   /*
-  Zoom mínimo absoluto: 0.90×
+  El zoom nunca puede ser inferior a 0.8
   */
 
   if (
     !Number.isFinite(state.zoom) ||
-    state.zoom < 0.9
+    state.zoom < 0.8
   ) {
 
-    state.zoom = 0.9;
+    state.zoom = 0.8;
 
   }
 
@@ -102,31 +93,50 @@ function loadState() {
 
 
   /*
-  Actualizar indicador
+  Actualizar indicadores
   */
+
+  if ($("brightnessOut")) {
+
+    $("brightnessOut").textContent =
+      Number(state.brightness).toFixed(2);
+
+  }
+
+  if ($("contrastOut")) {
+
+    $("contrastOut").textContent =
+      Number(state.contrast).toFixed(2);
+
+  }
+
+  if ($("gainOut")) {
+
+    $("gainOut").textContent =
+      Number(state.gain).toFixed(2);
+
+  }
 
   if ($("zoomOut")) {
 
     $("zoomOut").textContent =
-      state.zoom.toFixed(1) + "×";
+      Number(state.zoom).toFixed(1) + "×";
 
   }
 
 }
 
 
-/*
-====================================================
-GUARDAR CONFIGURACIÓN
-====================================================
-*/
+/* =========================================
+   GUARDAR CONFIGURACIÓN
+   ========================================= */
 
 function saveState() {
 
   try {
 
     localStorage.setItem(
-      "nvvr_v2",
+      "nvvr_v3",
       JSON.stringify(state)
     );
 
@@ -142,20 +152,16 @@ function saveState() {
 }
 
 
-/*
-====================================================
-INICIALIZAR
-====================================================
-*/
+/* =========================================
+   INICIALIZAR
+   ========================================= */
 
 loadState();
 
 
-/*
-====================================================
-INICIAR CÁMARA
-====================================================
-*/
+/* =========================================
+   INICIAR CÁMARA
+   ========================================= */
 
 async function startCamera() {
 
@@ -194,8 +200,7 @@ async function startCamera() {
       });
 
 
-    video.srcObject =
-      stream;
+    video.srcObject = stream;
 
     await video.play();
 
@@ -254,11 +259,9 @@ async function startCamera() {
 }
 
 
-/*
-====================================================
-REDIMENSIONAR CANVAS
-====================================================
-*/
+/* =========================================
+   REDIMENSIONAR CANVAS
+   ========================================= */
 
 function resize() {
 
@@ -268,20 +271,18 @@ function resize() {
       2
     );
 
+
   canvas.width =
     Math.max(
       640,
-      Math.floor(
-        innerWidth * dpr
-      )
+      Math.floor(innerWidth * dpr)
     );
+
 
   canvas.height =
     Math.max(
       360,
-      Math.floor(
-        innerHeight * dpr
-      )
+      Math.floor(innerHeight * dpr)
     );
 
 }
@@ -293,11 +294,9 @@ addEventListener(
 );
 
 
-/*
-====================================================
-PROCESAR FRAME
-====================================================
-*/
+/* =========================================
+   PROCESAR FRAME
+   ========================================= */
 
 function processFrame() {
 
@@ -329,17 +328,15 @@ function processFrame() {
 
 
   /*
-  Zoom:
-
-  0.90 = mayor campo de visión
-  1.00 = referencia
-  >1.00 = ampliación
+  0.8 = mayor campo de visión
+  1.0 = referencia
+  >1.0 = ampliación
   */
 
   const zoom =
     Math.max(
-      0.9,
-      Number(state.zoom) || 0.9
+      0.8,
+      Number(state.zoom) || 0.8
     );
 
 
@@ -371,7 +368,7 @@ function processFrame() {
 
 
   /*
-  Evitar salir de los límites
+  Evitar salir de los límites de la imagen
   */
 
   sw =
@@ -388,7 +385,7 @@ function processFrame() {
 
 
   /*
-  Centrar
+  Centrar imagen
   */
 
   sx =
@@ -424,9 +421,9 @@ function processFrame() {
   ctx.save();
 
 
-  /*
-  ESPEJO
-  */
+  /* =======================================
+     ESPEJO
+     ======================================= */
 
   if (mirror) {
 
@@ -443,9 +440,9 @@ function processFrame() {
   }
 
 
-  /*
-  MODO VR
-  */
+  /* =======================================
+     VR
+     ======================================= */
 
   if (vr) {
 
@@ -458,6 +455,7 @@ function processFrame() {
       w / 2,
       h
     );
+
 
     drawEye(
       sx,
@@ -489,11 +487,9 @@ function processFrame() {
 }
 
 
-/*
-====================================================
-PROCESAR OJO
-====================================================
-*/
+/* =========================================
+   PROCESAR IMAGEN
+   ========================================= */
 
 function drawEye(
   sx,
@@ -516,6 +512,7 @@ function drawEye(
       1,
       Math.floor(dw)
     );
+
 
   temp.height =
     Math.max(
@@ -554,35 +551,30 @@ function drawEye(
       temp.height
     );
 
+
   const d =
     img.data;
 
 
   const brightness =
-    Number(
-      state.brightness
-    );
+    Number(state.brightness);
 
   const gain =
-    Number(
-      state.gain
-    );
+    Number(state.gain);
 
   const contrast =
-    Number(
-      state.contrast
-    );
+    Number(state.contrast);
 
-
-  /*
-  Procesamiento pixel por pixel
-  */
 
   for (
     let i = 0;
     i < d.length;
     i += 4
   ) {
+
+    /*
+    Luminancia
+    */
 
     let y =
       (
@@ -604,7 +596,7 @@ function drawEye(
 
 
     /*
-    Brillo + ganancia
+    Brillo y ganancia
     */
 
     y *=
@@ -626,9 +618,9 @@ function drawEye(
       );
 
 
-    /*
-    MODO VERDE
-    */
+    /* =====================================
+       VERDE
+       ===================================== */
 
     if (mode === 0) {
 
@@ -644,25 +636,30 @@ function drawEye(
     }
 
 
-    /*
-    MODO BLANCO Y NEGRO
-    */
+    /* =====================================
+       BLANCO Y NEGRO
+       ===================================== */
 
     else if (mode === 1) {
 
       const q =
         y * 255;
 
-      d[i] = q;
-      d[i + 1] = q;
-      d[i + 2] = q;
+      d[i] =
+        q;
+
+      d[i + 1] =
+        q;
+
+      d[i + 2] =
+        q;
 
     }
 
 
-    /*
-    MODO ROJO
-    */
+    /* =====================================
+       ROJO
+       ===================================== */
 
     else if (mode === 2) {
 
@@ -678,18 +675,23 @@ function drawEye(
     }
 
 
-    /*
-    MODO INVERSO
-    */
+    /* =====================================
+       INVERSO
+       ===================================== */
 
     else {
 
       const q =
         (1 - y) * 255;
 
-      d[i] = q;
-      d[i + 1] = q;
-      d[i + 2] = q;
+      d[i] =
+        q;
+
+      d[i + 1] =
+        q;
+
+      d[i + 2] =
+        q;
 
     }
 
@@ -714,17 +716,16 @@ function drawEye(
 }
 
 
-/*
-====================================================
-RENDER
-====================================================
-*/
+/* =========================================
+   RENDER
+   ========================================= */
 
 function render() {
 
   processFrame();
 
   frames++;
+
 
   const now =
     performance.now();
@@ -741,6 +742,7 @@ function render() {
 
     }
 
+
     frames = 0;
 
     last = now;
@@ -756,11 +758,9 @@ function render() {
 }
 
 
-/*
-====================================================
-BOTÓN INICIAR
-====================================================
-*/
+/* =========================================
+   BOTÓN CÁMARA
+   ========================================= */
 
 if ($("startBtn")) {
 
@@ -770,11 +770,9 @@ if ($("startBtn")) {
 }
 
 
-/*
-====================================================
-MENÚ
-====================================================
-*/
+/* =========================================
+   MENÚ
+   ========================================= */
 
 if ($("menuBtn")) {
 
@@ -793,11 +791,9 @@ if ($("menuBtn")) {
 }
 
 
-/*
-====================================================
-CERRAR MENÚ
-====================================================
-*/
+/* =========================================
+   CERRAR MENÚ
+   ========================================= */
 
 if ($("closeBtn")) {
 
@@ -816,11 +812,9 @@ if ($("closeBtn")) {
 }
 
 
-/*
-====================================================
-CONTROLES
-====================================================
-*/
+/* =========================================
+   CONTROLES
+   ========================================= */
 
 for (
   const id of [
@@ -833,6 +827,7 @@ for (
 
   const control =
     $(id);
+
 
   if (!control) {
 
@@ -850,26 +845,22 @@ for (
 
 
     /*
-    Zoom mínimo
+    Zoom mínimo 0.8
     */
 
     if (
       id === "zoom" &&
-      state.zoom < 0.9
+      state.zoom < 0.8
     ) {
 
       state.zoom =
-        0.9;
+        0.8;
 
       control.value =
-        0.9;
+        0.8;
 
     }
 
-
-    /*
-    Mostrar valor
-    */
 
     const output =
       $(`${id}Out`);
@@ -902,11 +893,9 @@ for (
 }
 
 
-/*
-====================================================
-ACCIONES
-====================================================
-*/
+/* =========================================
+   ACCIONES
+   ========================================= */
 
 document
   .querySelectorAll(
@@ -921,9 +910,7 @@ document
           btn.dataset.action;
 
 
-        /*
-        MODO
-        */
+        /* MODO */
 
         if (
           a === "mode"
@@ -944,9 +931,7 @@ document
         }
 
 
-        /*
-        VR
-        */
+        /* VR */
 
         if (
           a === "vr"
@@ -980,9 +965,7 @@ document
         }
 
 
-        /*
-        RETÍCULA
-        */
+        /* RETÍCULA */
 
         if (
           a === "crosshair"
@@ -1013,9 +996,7 @@ document
         }
 
 
-        /*
-        ESPEJO
-        */
+        /* ESPEJO */
 
         if (
           a === "mirror"
@@ -1036,9 +1017,7 @@ document
         }
 
 
-        /*
-        PANTALLA COMPLETA
-        */
+        /* PANTALLA COMPLETA */
 
         if (
           a === "fullscreen"
@@ -1072,9 +1051,7 @@ document
         }
 
 
-        /*
-        LINTERNA
-        */
+        /* LINTERNA */
 
         if (
           a === "torch" &&
@@ -1138,11 +1115,9 @@ document
   });
 
 
-/*
-====================================================
-RESTABLECER
-====================================================
-*/
+/* =========================================
+   RESTABLECER
+   ========================================= */
 
 if ($("resetBtn")) {
 
@@ -1154,7 +1129,7 @@ if ($("resetBtn")) {
         brightness: 1.2,
         contrast: 1.35,
         gain: 1,
-        zoom: 0.9
+        zoom: 0.8
       }
     );
 
@@ -1179,7 +1154,7 @@ if ($("resetBtn")) {
     if ($("brightnessOut")) {
 
       $("brightnessOut").textContent =
-        state.brightness.toFixed(2);
+        "1.20";
 
     }
 
@@ -1187,7 +1162,7 @@ if ($("resetBtn")) {
     if ($("contrastOut")) {
 
       $("contrastOut").textContent =
-        state.contrast.toFixed(2);
+        "1.35";
 
     }
 
@@ -1195,7 +1170,7 @@ if ($("resetBtn")) {
     if ($("gainOut")) {
 
       $("gainOut").textContent =
-        state.gain.toFixed(2);
+        "1.00";
 
     }
 
@@ -1203,7 +1178,7 @@ if ($("resetBtn")) {
     if ($("zoomOut")) {
 
       $("zoomOut").textContent =
-        "0.9×";
+        "0.8×";
 
     }
 
@@ -1212,11 +1187,9 @@ if ($("resetBtn")) {
 }
 
 
-/*
-====================================================
-DOBLE CLICK / TOQUE
-====================================================
-*/
+/* =========================================
+   DOBLE TOQUE → PANTALLA COMPLETA
+   ========================================= */
 
 document.addEventListener(
   "dblclick",
@@ -1230,11 +1203,9 @@ document.addEventListener(
 );
 
 
-/*
-====================================================
-DETENER CÁMARA
-====================================================
-*/
+/* =========================================
+   DETENER CÁMARA
+   ========================================= */
 
 window.addEventListener(
   "pagehide",
@@ -1254,11 +1225,9 @@ window.addEventListener(
 );
 
 
-/*
-====================================================
-SERVICE WORKER
-====================================================
-*/
+/* =========================================
+   SERVICE WORKER
+   ========================================= */
 
 if (
   "serviceWorker" in navigator
