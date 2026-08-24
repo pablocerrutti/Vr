@@ -1,116 +1,74 @@
-const CACHE = "nightvision-v10";
+const CACHE_VERSION = "visor-nocturno-v2";
 
-const ASSETS = [
-  "./",
-  "./index.html",
-  "./css/style.css",
-  "./js/app.js",
-  "./manifest.json"
+const CACHE_FILES = [
+    "./",
+    "./index.html",
+    "./style.css",
+    "./app.js",
+    "./manifest.json"
 ];
 
-self.addEventListener(
-  "install",
-  event => {
-
+// INSTALACIÓN
+self.addEventListener("install", event => {
     event.waitUntil(
-      caches
-        .open(CACHE)
-        .then(
-          cache =>
-            cache.addAll(ASSETS)
-        )
+        caches.open(CACHE_VERSION)
+            .then(cache => cache.addAll(CACHE_FILES))
+            .then(() => self.skipWaiting())
     );
+});
 
-    self.skipWaiting();
-
-  }
-);
-
-
-self.addEventListener(
-  "activate",
-  event => {
-
+// ACTIVACIÓN
+self.addEventListener("activate", event => {
     event.waitUntil(
-
-      caches
-        .keys()
-        .then(
-          keys =>
-            Promise.all(
-
-              keys
-                .filter(
-                  key =>
-                    key !== CACHE
+        caches.keys()
+            .then(keys =>
+                Promise.all(
+                    keys
+                        .filter(key => key !== CACHE_VERSION)
+                        .map(key => caches.delete(key))
                 )
-                .map(
-                  key =>
-                    caches.delete(key)
-                )
-
             )
-        )
-
+            .then(() => self.clients.claim())
     );
+});
 
-    self.clients.claim();
+// PETICIONES
+self.addEventListener("fetch", event => {
 
-  }
-);
-
-
-self.addEventListener(
-  "fetch",
-  event => {
+    // No interceptar cámara, blobs ni APIs externas
+    if (
+        event.request.url.startsWith("blob:") ||
+        event.request.method !== "GET"
+    ) {
+        return;
+    }
 
     event.respondWith(
+        caches.match(event.request)
+            .then(cachedResponse => {
 
-      caches
-        .match(
-          event.request
-        )
-        .then(
-          cached => {
-
-            if (cached)
-              return cached;
-
-
-            return fetch(
-              event.request
-            )
-              .then(
-                response => {
-
-                  const copy =
-                    response.clone();
-
-                  caches
-                    .open(CACHE)
-                    .then(
-                      cache =>
-                        cache.put(
-                          event.request,
-                          copy
-                        )
-                    );
-
-                  return response;
-
+                if (cachedResponse) {
+                    return cachedResponse;
                 }
-              )
-              .catch(
-                () =>
-                  caches.match(
-                    "./index.html"
-                  )
-              );
 
-          }
-        )
+                return fetch(event.request)
+                    .then(response => {
 
+                        if (
+                            response &&
+                            response.status === 200 &&
+                            response.type === "basic"
+                        ) {
+                            const copy = response.clone();
+
+                            caches.open(CACHE_VERSION)
+                                .then(cache => {
+                                    cache.put(event.request, copy);
+                                });
+                        }
+
+                        return response;
+                    });
+            })
     );
-
-  }
-);
+});
