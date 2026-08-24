@@ -1,6 +1,7 @@
 /* =========================================
    NIGHT VISION
    Aplicación de cámara offline
+   V1.1.0
 ========================================= */
 
 
@@ -19,11 +20,13 @@ const ctx =
         willReadFrequently: true
     });
 
+
 const loading =
     document.getElementById("loading");
 
 const cameraStatus =
     document.getElementById("cameraStatus");
+
 
 const cameraButton =
     document.getElementById("cameraButton");
@@ -37,8 +40,95 @@ const reticleButton =
 const switchButton =
     document.getElementById("switchButton");
 
+
 const reticle =
     document.getElementById("reticle");
+
+
+const distanceScale =
+    document.getElementById(
+        "distanceScale"
+    );
+
+
+const distanceHud =
+    document.getElementById(
+        "distanceHud"
+    );
+
+
+const distanceInstruction =
+    document.getElementById(
+        "distanceInstruction"
+    );
+
+
+/* =========================================
+   CONFIGURACIÓN
+========================================= */
+
+const DISTANCE_CONFIG = {
+
+    /*
+     * Altura de la cámara respecto
+     * al suelo.
+     */
+    cameraHeight: 1.65,
+
+
+    /*
+     * Altura de referencia corporal.
+     */
+    targetHeight: 1.70,
+
+
+    /*
+     * Anchura de referencia corporal.
+     */
+    targetWidth: 0.45,
+
+
+    /*
+     * Distancia máxima de la escala.
+     */
+    maxDistance: 100,
+
+
+    /*
+     * FOV VERTICAL INICIAL.
+     *
+     * Es un valor de calibración.
+     *
+     * Se podrá ajustar posteriormente
+     * con pruebas reales.
+     */
+
+    verticalFovPortrait: 50,
+
+    verticalFovLandscape: 37
+
+};
+
+
+/*
+ * Distancias que aparecerán
+ * en la retícula.
+ */
+
+const DISTANCE_MARKS = [
+
+    10,
+    15,
+    20,
+    25,
+    30,
+    40,
+    50,
+    60,
+    80,
+    100
+
+];
 
 
 /* =========================================
@@ -47,13 +137,17 @@ const reticle =
 
 let stream = null;
 
-let cameraFacing = "environment";
+let cameraFacing =
+    "environment";
 
-let nightVisionEnabled = true;
+let nightVisionEnabled =
+    true;
 
-let reticleEnabled = false;
+let reticleEnabled =
+    false;
 
-let animationFrame = null;
+let animationFrame =
+    null;
 
 
 /* =========================================
@@ -78,17 +172,40 @@ async function iniciarAplicacion() {
 
     ajustarCanvas();
 
+    generarEscalaDistancia();
+
     window.addEventListener(
         "resize",
-        ajustarCanvas
+        () => {
+
+            ajustarCanvas();
+
+            if (reticleEnabled) {
+
+                generarEscalaDistancia();
+
+            }
+
+        }
     );
+
 
     window.addEventListener(
         "orientationchange",
         () => {
 
             setTimeout(
-                ajustarCanvas,
+                () => {
+
+                    ajustarCanvas();
+
+                    if (reticleEnabled) {
+
+                        generarEscalaDistancia();
+
+                    }
+
+                },
                 300
             );
 
@@ -113,10 +230,12 @@ function ajustarCanvas() {
             2
         );
 
+
     canvas.width =
         Math.floor(
             window.innerWidth * dpr
         );
+
 
     canvas.height =
         Math.floor(
@@ -134,10 +253,13 @@ async function iniciarCamara() {
 
     detenerCamara();
 
+
     try {
 
-        if (!navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia) {
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia
+        ) {
 
             throw new Error(
                 "La cámara no está disponible."
@@ -147,30 +269,44 @@ async function iniciarCamara() {
 
 
         stream =
-            await navigator.mediaDevices
+            await navigator
+                .mediaDevices
                 .getUserMedia({
 
                     video: {
 
                         facingMode: {
+
                             ideal:
                                 cameraFacing
+
                         },
+
 
                         width: {
+
                             ideal: 1920
+
                         },
+
 
                         height: {
+
                             ideal: 1080
+
                         },
 
+
                         frameRate: {
+
                             ideal: 30,
+
                             max: 30
+
                         }
 
                     },
+
 
                     audio: false
 
@@ -187,6 +323,7 @@ async function iniciarCamara() {
         cameraStatus.textContent =
             "CAM OK";
 
+
         loading.classList.add(
             "hidden"
         );
@@ -199,12 +336,16 @@ async function iniciarCamara() {
 
         console.error(error);
 
+
         cameraStatus.textContent =
             "SIN CÁMARA";
 
-        loading.querySelector(
-            ".loading-text"
-        ).textContent =
+
+        loading
+            .querySelector(
+                ".loading-text"
+            )
+            .textContent =
             "Permite el acceso a la cámara";
 
     }
@@ -219,12 +360,18 @@ async function iniciarCamara() {
 function detenerCamara() {
 
     if (!stream) {
+
         return;
+
     }
 
-    stream.getTracks().forEach(
-        track => track.stop()
-    );
+
+    stream
+        .getTracks()
+        .forEach(
+            track => track.stop()
+        );
+
 
     stream = null;
 
@@ -244,6 +391,7 @@ function comenzarProcesamiento() {
         );
 
     }
+
 
     procesarImagen();
 
@@ -266,6 +414,7 @@ function procesarImagen() {
             video.videoWidth /
             video.videoHeight;
 
+
         const canvasRatio =
             canvas.width /
             canvas.height;
@@ -274,8 +423,10 @@ function procesarImagen() {
         let drawWidth =
             canvas.width;
 
+
         let drawHeight =
             canvas.height;
+
 
         let offsetX = 0;
 
@@ -283,35 +434,47 @@ function procesarImagen() {
 
 
         /*
-         * Mantener proporción tipo
+         * Mantener proporción
          * object-fit: cover.
          */
 
-        if (videoRatio > canvasRatio) {
+        if (
+            videoRatio >
+            canvasRatio
+        ) {
 
             drawHeight =
                 canvas.height;
+
 
             drawWidth =
                 drawHeight *
                 videoRatio;
 
+
             offsetX =
-                (canvas.width -
-                 drawWidth) / 2;
+                (
+                    canvas.width -
+                    drawWidth
+                ) / 2;
+
 
         } else {
 
             drawWidth =
                 canvas.width;
 
+
             drawHeight =
                 drawWidth /
                 videoRatio;
 
+
             offsetY =
-                (canvas.height -
-                 drawHeight) / 2;
+                (
+                    canvas.height -
+                    drawHeight
+                ) / 2;
 
         }
 
@@ -325,7 +488,9 @@ function procesarImagen() {
         );
 
 
-        if (nightVisionEnabled) {
+        if (
+            nightVisionEnabled
+        ) {
 
             aplicarVisionNocturna();
 
@@ -356,6 +521,7 @@ function aplicarVisionNocturna() {
             canvas.height
         );
 
+
     const data =
         image.data;
 
@@ -366,11 +532,16 @@ function aplicarVisionNocturna() {
         i += 4
     ) {
 
-        const r = data[i];
+        const r =
+            data[i];
 
-        const g = data[i + 1];
 
-        const b = data[i + 2];
+        const g =
+            data[i + 1];
+
+
+        const b =
+            data[i + 2];
 
 
         /*
@@ -388,8 +559,11 @@ function aplicarVisionNocturna() {
          */
 
         let value =
-            (luminance - 20) *
-            1.45;
+            (
+                luminance -
+                20
+            ) * 1.45;
+
 
         value =
             Math.max(
@@ -402,15 +576,16 @@ function aplicarVisionNocturna() {
 
 
         /*
-         * Tonalidad verde tipo
-         * visión nocturna digital.
+         * Tonalidad verde.
          */
 
         data[i] =
             value * 0.12;
 
+
         data[i + 1] =
             value * 1.00;
+
 
         data[i + 2] =
             value * 0.18;
@@ -428,6 +603,369 @@ function aplicarVisionNocturna() {
 
 
 /* =========================================
+   FOV VERTICAL
+========================================= */
+
+function obtenerFovVertical() {
+
+    if (
+        window.innerWidth >
+        window.innerHeight
+    ) {
+
+        return DISTANCE_CONFIG
+            .verticalFovLandscape;
+
+    }
+
+
+    return DISTANCE_CONFIG
+        .verticalFovPortrait;
+
+}
+
+
+/* =========================================
+   CONVERSIÓN DE ÁNGULOS
+========================================= */
+
+function gradosARadianes(
+    grados
+) {
+
+    return (
+        grados *
+        Math.PI /
+        180
+    );
+
+}
+
+
+/* =========================================
+   DISTANCIA → ÁNGULO
+========================================= */
+
+function calcularAnguloParaDistancia(
+    distancia
+) {
+
+    return Math.atan(
+        DISTANCE_CONFIG.cameraHeight /
+        distancia
+    );
+
+}
+
+
+/* =========================================
+   ÁNGULO → DISTANCIA
+========================================= */
+
+function calcularDistanciaDesdeAngulo(
+    angulo
+) {
+
+    if (
+        angulo <= 0
+    ) {
+
+        return Infinity;
+
+    }
+
+
+    return (
+        DISTANCE_CONFIG.cameraHeight /
+        Math.tan(angulo)
+    );
+
+}
+
+
+/* =========================================
+   POSICIÓN DE LA MARCA
+========================================= */
+
+/*
+ * Devuelve la posición vertical
+ * de una distancia dentro de la
+ * retícula.
+ *
+ * 0.5 = centro óptico.
+ *
+ * La base de un objeto sobre el suelo
+ * aparece por debajo del centro porque
+ * la cámara está a 1.65 m.
+ */
+
+function obtenerPosicionMarca(
+    distancia
+) {
+
+    const fov =
+        gradosARadianes(
+            obtenerFovVertical()
+        );
+
+
+    const medioFov =
+        fov / 2;
+
+
+    const angulo =
+        calcularAnguloParaDistancia(
+            distancia
+        );
+
+
+    /*
+     * Relación angular respecto
+     * al centro de la imagen.
+     */
+
+    const proporcion =
+        Math.tan(angulo) /
+        Math.tan(medioFov);
+
+
+    /*
+     * Convertir a porcentaje.
+     *
+     * 0.5 = centro.
+     *
+     * 1.0 = parte inferior.
+     */
+
+    const posicion =
+        0.5 +
+        proporcion * 0.5;
+
+
+    return posicion;
+
+}
+
+
+/* =========================================
+   ESCALA DE DISTANCIA
+========================================= */
+
+function generarEscalaDistancia() {
+
+    if (!distanceScale) {
+
+        return;
+
+    }
+
+
+    distanceScale.innerHTML =
+        "";
+
+
+    DISTANCE_MARKS.forEach(
+        distancia => {
+
+            const posicion =
+                obtenerPosicionMarca(
+                    distancia
+                );
+
+
+            /*
+             * Si la marca queda fuera
+             * de la pantalla, no se dibuja.
+             */
+
+            if (
+                posicion < 0 ||
+                posicion > 1
+            ) {
+
+                return;
+
+            }
+
+
+            const mark =
+                document.createElement(
+                    "div"
+                );
+
+
+            mark.className =
+                "distance-mark";
+
+
+            mark.dataset.distance =
+                distancia;
+
+
+            mark.style.top =
+                `${posicion * 100}%`;
+
+
+            /*
+             * Marcas mayores cada
+             * 10 metros.
+             */
+
+            const esMayor =
+                distancia % 10 === 0;
+
+
+            mark.innerHTML = `
+
+                <span
+                    class="distance-line
+                    ${esMayor
+                        ? "major"
+                        : ""}"
+                ></span>
+
+                <span
+                    class="distance-label
+                    ${esMayor
+                        ? "major"
+                        : ""}"
+                >
+                    ${distancia}
+                </span>
+
+            `;
+
+
+            distanceScale.appendChild(
+                mark
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================
+   ACTUALIZAR HUD
+========================================= */
+
+function actualizarHudDistancia(
+    distancia
+) {
+
+    if (!distanceHud) {
+
+        return;
+
+    }
+
+
+    if (
+        !isFinite(distancia)
+    ) {
+
+        distanceHud.textContent =
+            "DIST: -- m";
+
+        return;
+
+    }
+
+
+    if (
+        distancia >
+        DISTANCE_CONFIG.maxDistance
+    ) {
+
+        distanceHud.textContent =
+            "DIST: >100 m";
+
+        return;
+
+    }
+
+
+    distanceHud.textContent =
+        `DIST: ${Math.round(distancia)} m`;
+
+}
+
+
+/* =========================================
+   CÁLCULO DESDE POSICIÓN
+========================================= */
+
+/*
+ * Esta función convierte la posición
+ * vertical de un punto seleccionado
+ * en distancia.
+ *
+ * Actualmente la escala funciona
+ * visualmente sin necesidad de tocar
+ * la pantalla.
+ */
+
+function calcularDistanciaPorPosicion(
+    posicionNormalizada
+) {
+
+    /*
+     * Distancia respecto al centro
+     * óptico.
+     */
+
+    const diferencia =
+        posicionNormalizada -
+        0.5;
+
+
+    if (
+        diferencia <= 0
+    ) {
+
+        return Infinity;
+
+    }
+
+
+    const fov =
+        gradosARadianes(
+            obtenerFovVertical()
+        );
+
+
+    const medioFov =
+        fov / 2;
+
+
+    /*
+     * Ángulo hacia abajo.
+     */
+
+    const tangente =
+        (
+            diferencia * 2
+        ) *
+        Math.tan(
+            medioFov
+        );
+
+
+    const angulo =
+        Math.atan(
+            tangente
+        );
+
+
+    return calcularDistanciaDesdeAngulo(
+        angulo
+    );
+
+}
+
+
+/* =========================================
    BOTÓN CÁMARA
 ========================================= */
 
@@ -439,17 +977,23 @@ cameraButton.addEventListener(
 
             detenerCamara();
 
+
             cameraStatus.textContent =
                 "PAUSADA";
+
 
             loading.classList.remove(
                 "hidden"
             );
 
-            loading.querySelector(
-                ".loading-text"
-            ).textContent =
+
+            loading
+                .querySelector(
+                    ".loading-text"
+                )
+                .textContent =
                 "Cámara detenida";
+
 
         } else {
 
@@ -457,10 +1001,14 @@ cameraButton.addEventListener(
                 "hidden"
             );
 
-            loading.querySelector(
-                ".loading-text"
-            ).textContent =
+
+            loading
+                .querySelector(
+                    ".loading-text"
+                )
+                .textContent =
                 "Iniciando cámara...";
+
 
             await iniciarCamara();
 
@@ -480,6 +1028,7 @@ nightButton.addEventListener(
 
         nightVisionEnabled =
             !nightVisionEnabled;
+
 
         nightButton.classList.toggle(
             "active",
@@ -501,14 +1050,91 @@ reticleButton.addEventListener(
         reticleEnabled =
             !reticleEnabled;
 
+
         reticle.classList.toggle(
             "hidden",
             !reticleEnabled
         );
 
+
         reticleButton.classList.toggle(
             "active",
             reticleEnabled
+        );
+
+
+        if (
+            reticleEnabled
+        ) {
+
+            generarEscalaDistancia();
+
+
+            distanceHud.textContent =
+                "DIST: -- m";
+
+
+            distanceInstruction
+                .textContent =
+                "BASE DEL OBJETO";
+
+        }
+
+    }
+);
+
+
+/* =========================================
+   INTERACCIÓN CON LA RETÍCULA
+========================================= */
+
+/*
+ * Al tocar la pantalla sobre la retícula,
+ * se puede seleccionar la posición de la
+ * base del objeto.
+ *
+ * Esto permite que el cálculo sea real:
+ *
+ * cámara = 1.65 m
+ * ↓
+ * ángulo hacia la base
+ * ↓
+ * distancia.
+ */
+
+reticle.addEventListener(
+    "click",
+    event => {
+
+        if (!reticleEnabled) {
+
+            return;
+
+        }
+
+
+        const rect =
+            reticle.getBoundingClientRect();
+
+
+        const y =
+            event.clientY -
+            rect.top;
+
+
+        const posicion =
+            y /
+            rect.height;
+
+
+        const distancia =
+            calcularDistanciaPorPosicion(
+                posicion
+            );
+
+
+        actualizarHudDistancia(
+            distancia
         );
 
     }
@@ -536,9 +1162,12 @@ switchButton.addEventListener(
             "hidden"
         );
 
-        loading.querySelector(
-            ".loading-text"
-        ).textContent =
+
+        loading
+            .querySelector(
+                ".loading-text"
+            )
+            .textContent =
             "Cambiando cámara...";
 
 
@@ -557,6 +1186,7 @@ window.addEventListener(
     () => {
 
         detenerCamara();
+
 
         if (animationFrame) {
 
