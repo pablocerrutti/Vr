@@ -1,68 +1,170 @@
-const CACHE = "nightvision-vr-v4";
+/* =========================================================
+   LONWOLF NIGHTVISION VR
+   SERVICE WORKER V5
+   ========================================================= */
+
+const CACHE =
+  "nightvision-vr-v5";
+
 
 const ASSETS = [
+
   "./",
+
   "./index.html",
+
   "./css/style.css",
-  "./js/app.js?v=4",
+
+  "./js/app.js?v=5",
+
   "./manifest.json"
+
 ];
 
-self.addEventListener("install", event => {
 
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-  );
+/* =========================================================
+   INSTALL
+   ========================================================= */
 
-});
+self.addEventListener(
+  "install",
+  event => {
 
+    event.waitUntil(
 
-self.addEventListener("activate", event => {
+      caches
+        .open(CACHE)
 
-  event.waitUntil(
+        .then(
+          cache =>
+            cache.addAll(
+              ASSETS
+            )
+        )
 
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE)
-          .map(key => caches.delete(key))
-      )
-    )
+        .then(
+          () =>
+            self.skipWaiting()
+        )
 
-    .then(() => self.clients.claim())
+    );
 
-  );
-
-});
-
-
-self.addEventListener("fetch", event => {
-
-  if (event.request.method !== "GET") {
-    return;
   }
+);
 
-  event.respondWith(
 
-    fetch(event.request)
-      .then(response => {
+/* =========================================================
+   ACTIVATE
+   ========================================================= */
 
-        const copy = response.clone();
+self.addEventListener(
+  "activate",
+  event => {
 
-        caches.open(CACHE)
-          .then(cache => {
-            cache.put(event.request, copy);
-          });
+    event.waitUntil(
 
-        return response;
+      caches
+        .keys()
 
-      })
-      .catch(() =>
-        caches.match(event.request)
+        .then(
+          keys =>
+
+            Promise.all(
+
+              keys
+
+                .filter(
+                  key =>
+                    key !== CACHE
+                )
+
+                .map(
+                  key =>
+                    caches.delete(
+                      key
+                    )
+                )
+
+            )
+
+        )
+
+        .then(
+          () =>
+            self.clients.claim()
+        )
+
+    );
+
+  }
+);
+
+
+/* =========================================================
+   FETCH
+   ========================================================= */
+
+self.addEventListener(
+  "fetch",
+  event => {
+
+    if (
+      event.request.method !==
+      "GET"
+    ) {
+
+      return;
+
+    }
+
+
+    event.respondWith(
+
+      fetch(
+        event.request
       )
 
-  );
+        .then(
+          response => {
 
-});
+            /*
+               Guardar la versión
+               nueva.
+            */
+
+            const copy =
+              response.clone();
+
+
+            caches
+              .open(CACHE)
+              .then(
+                cache => {
+
+                  cache.put(
+                    event.request,
+                    copy
+                  );
+
+                }
+              );
+
+
+            return response;
+
+          }
+        )
+
+        .catch(
+          () =>
+
+            caches.match(
+              event.request
+            )
+
+        )
+
+    );
+
+  }
+);
