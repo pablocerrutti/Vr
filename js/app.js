@@ -1,13 +1,10 @@
 /* =========================================================
    LONWOLF NIGHTVISION VR
-   APP.JS — OPTIMIZADO 30 FPS
+   APP.JS — WEBGL / GPU
    ========================================================= */
 
 const video = document.getElementById("camera");
 const canvas = document.getElementById("view");
-const ctx = canvas.getContext("2d", {
-  alpha: false
-});
 
 const $ = id => document.getElementById(id);
 
@@ -21,7 +18,7 @@ let track = null;
 
 let raf = 0;
 
-let lastFrameTime = 0;
+let lastRender = 0;
 let fpsTime = performance.now();
 let frames = 0;
 
@@ -50,44 +47,6 @@ const state = {
 
 
 /* =========================================================
-   CANVAS DE PROCESAMIENTO
-   =========================================================
-
-   IMPORTANTE:
-
-   No procesamos toda la pantalla.
-
-   Procesamos una imagen pequeña y luego
-   la ampliamos.
-
-   Esto reduce enormemente el trabajo
-   de getImageData / putImageData.
-   ========================================================= */
-
-const workCanvas =
-  document.createElement("canvas");
-
-const workCtx =
-  workCanvas.getContext("2d", {
-    willReadFrequently: true
-  });
-
-
-/*
-   Resolución máxima interna.
-
-   640x360 es mucho más liviano que
-   procesar 1920x1080 en cada frame.
-*/
-
-const WORK_WIDTH = 640;
-const WORK_HEIGHT = 360;
-
-workCanvas.width = WORK_WIDTH;
-workCanvas.height = WORK_HEIGHT;
-
-
-/* =========================================================
    CARGAR CONFIGURACIÓN
    ========================================================= */
 
@@ -107,35 +66,24 @@ function loadState() {
 
     }
 
-  } catch (e) {
+  } catch (error) {
 
     console.warn(
-      "No se pudo cargar la configuración",
-      e
+      "Error cargando configuración:",
+      error
     );
 
   }
 
 
-  /*
-     Seguridad del zoom
-  */
-
-  if (
-    !Number.isFinite(state.zoom) ||
-    state.zoom < 0.8
-  ) {
-
-    state.zoom = 0.8;
-
-  }
-
-
-  if (state.zoom > 4) {
-
-    state.zoom = 4;
-
-  }
+  state.zoom =
+    Math.max(
+      0.8,
+      Math.min(
+        4,
+        Number(state.zoom) || 0.8
+      )
+    );
 
 
   updateControls();
@@ -149,18 +97,31 @@ function loadState() {
 
 function updateControls() {
 
-  for (
-    const key of Object.keys(state)
-  ) {
+  if ($("brightness")) {
 
-    const element = $(key);
+    $("brightness").value =
+      state.brightness;
 
-    if (element) {
+  }
 
-      element.value =
-        state[key];
+  if ($("contrast")) {
 
-    }
+    $("contrast").value =
+      state.contrast;
+
+  }
+
+  if ($("gain")) {
+
+    $("gain").value =
+      state.gain;
+
+  }
+
+  if ($("zoom")) {
+
+    $("zoom").value =
+      state.zoom;
 
   }
 
@@ -172,7 +133,6 @@ function updateControls() {
 
   }
 
-
   if ($("contrastOut")) {
 
     $("contrastOut").textContent =
@@ -180,14 +140,12 @@ function updateControls() {
 
   }
 
-
   if ($("gainOut")) {
 
     $("gainOut").textContent =
       Number(state.gain).toFixed(2);
 
   }
-
 
   if ($("zoomOut")) {
 
@@ -200,7 +158,7 @@ function updateControls() {
 
 
 /* =========================================================
-   GUARDAR CONFIGURACIÓN
+   GUARDAR
    ========================================================= */
 
 function saveState() {
@@ -212,11 +170,11 @@ function saveState() {
       JSON.stringify(state)
     );
 
-  } catch (e) {
+  } catch (error) {
 
     console.warn(
-      "No se pudo guardar configuración",
-      e
+      "Error guardando configuración:",
+      error
     );
 
   }
@@ -228,6 +186,751 @@ loadState();
 
 
 /* =========================================================
+   WEBGL
+   ========================================================= */
+
+const gl =
+  canvas.getContext(
+    "webgl",
+    {
+      alpha: false,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      preserveDrawingBuffer: false,
+      powerPreference: "high-performance"
+    }
+  );
+
+
+if (!gl) {
+
+  alert(
+    "Este navegador no soporta WebGL. Se necesita WebGL para el modo de alto rendimiento."
+  );
+
+  throw new Error(
+    "WebGL no disponible"
+  );
+
+}
+
+
+/* =========================================================
+   VERTEX SHADER
+   ========================================================= */
+
+const vertexShaderSource = `
+
+attribute vec2 a_position;
+attribute vec2 a_texCoord;
+
+varying vec2 v_texCoord;
+
+void main() {
+
+  gl_Position =
+    vec4(
+      a_position,
+      0.0,
+      1.0
+    );
+
+  v_texCoord =
+    a_texCoord;
+
+}
+
+`;
+
+
+/* =========================================================
+   FRAGMENT SHADER
+   ========================================================= */
+
+const fragmentShaderSource = `
+
+precision mediump float;
+
+uniform sampler2D u_texture;
+
+uniform float u_brightness;
+uniform float u_contrast;
+uniform float u_gain;
+
+uniform float u_zoom;
+
+uniform float u_mode;
+
+uniform float u_mirror;
+
+uniform vec2 u_sourceAspect;
+uniform vec2 u_outputAspect;
+
+varying vec2 v_texCoord;
+
+
+/* ---------------------------------------------
+   LUMINANCIA
+   --------------------------------------------- */
+
+float luminance(
+  vec3 color
+) {
+
+  return
+    dot(
+      color,
+      vec3(
+        0.2126,
+        0.7152,
+        0.0722
+      )
+    );
+
+}
+
+
+/* ---------------------------------------------
+   MAIN
+   --------------------------------------------- */
+
+void main() {
+
+  vec2 uv =
+    v_texCoord;
+
+
+  /* -------------------------------------------
+     ESPEJO
+     ------------------------------------------- */
+
+  if (
+    u_mirror > 0.5
+  ) {
+
+    uv.x =
+      1.0 - uv.x;
+
+  }
+
+
+  /* -------------------------------------------
+     CORRECCIÓN DE ASPECT RATIO
+     ------------------------------------------- */
+
+  float sourceRatio =
+    u_sourceAspect.x /
+    u_sourceAspect.y;
+
+  float outputRatio =
+    u_outputAspect.x /
+    u_outputAspect.y;
+
+
+  vec2 centered =
+    uv - 0.5;
+
+
+  if (
+    sourceRatio > outputRatio
+  ) {
+
+    float scale =
+      outputRatio /
+      sourceRatio;
+
+    centered.x *= scale;
+
+  }
+
+  else {
+
+    float scale =
+      sourceRatio /
+      outputRatio;
+
+    centered.y *= scale;
+
+  }
+
+
+  /*
+     Zoom.
+
+     1.0 = referencia
+     >1.0 = ampliación
+
+     Para 0.8 buscamos
+     mostrar el máximo campo disponible.
+  */
+
+  float effectiveZoom =
+    max(
+      u_zoom,
+      0.8
+    );
+
+
+  centered /=
+    effectiveZoom;
+
+
+  uv =
+    centered + 0.5;
+
+
+  /*
+     Evitar muestreo fuera de imagen
+  */
+
+  uv =
+    clamp(
+      uv,
+      0.0,
+      1.0
+    );
+
+
+  /* -------------------------------------------
+     OBTENER COLOR
+     ------------------------------------------- */
+
+  vec3 color =
+    texture2D(
+      u_texture,
+      uv
+    ).rgb;
+
+
+  /* -------------------------------------------
+     LUMINANCIA
+     ------------------------------------------- */
+
+  float y =
+    luminance(
+      color
+    );
+
+
+  /* -------------------------------------------
+     CONTRASTE
+     ------------------------------------------- */
+
+  y =
+    (
+      (y - 0.5) *
+      u_contrast
+    ) + 0.5;
+
+
+  /* -------------------------------------------
+     BRILLO + GANANCIA
+     ------------------------------------------- */
+
+  y *=
+    u_brightness *
+    u_gain;
+
+
+  y =
+    clamp(
+      y,
+      0.0,
+      1.0
+    );
+
+
+  /* -------------------------------------------
+     MODO VERDE
+     ------------------------------------------- */
+
+  if (
+    u_mode < 0.5
+  ) {
+
+    color =
+      vec3(
+        y * 0.41,
+        y,
+        y * 0.45
+      );
+
+  }
+
+
+  /* -------------------------------------------
+     B/N
+     ------------------------------------------- */
+
+  else if (
+    u_mode < 1.5
+  ) {
+
+    color =
+      vec3(y);
+
+  }
+
+
+  /* -------------------------------------------
+     ROJO
+     ------------------------------------------- */
+
+  else if (
+    u_mode < 2.5
+  ) {
+
+    color =
+      vec3(
+        y,
+        y * 0.25,
+        y * 0.12
+      );
+
+  }
+
+
+  /* -------------------------------------------
+     INVERSO
+     ------------------------------------------- */
+
+  else {
+
+    float inverseY =
+      1.0 - y;
+
+    color =
+      vec3(
+        inverseY
+      );
+
+  }
+
+
+  gl_FragColor =
+    vec4(
+      color,
+      1.0
+    );
+
+}
+
+`;
+
+
+/* =========================================================
+   COMPILAR SHADER
+   ========================================================= */
+
+function compileShader(
+  type,
+  source
+) {
+
+  const shader =
+    gl.createShader(type);
+
+
+  gl.shaderSource(
+    shader,
+    source
+  );
+
+
+  gl.compileShader(
+    shader
+  );
+
+
+  if (
+    !gl.getShaderParameter(
+      shader,
+      gl.COMPILE_STATUS
+    )
+  ) {
+
+    const log =
+      gl.getShaderInfoLog(
+        shader
+      );
+
+    gl.deleteShader(
+      shader
+    );
+
+    throw new Error(
+      "Shader error: " +
+      log
+    );
+
+  }
+
+
+  return shader;
+
+}
+
+
+/* =========================================================
+   CREAR PROGRAMA
+   ========================================================= */
+
+const vertexShader =
+  compileShader(
+    gl.VERTEX_SHADER,
+    vertexShaderSource
+  );
+
+
+const fragmentShader =
+  compileShader(
+    gl.FRAGMENT_SHADER,
+    fragmentShaderSource
+  );
+
+
+const program =
+  gl.createProgram();
+
+
+gl.attachShader(
+  program,
+  vertexShader
+);
+
+
+gl.attachShader(
+  program,
+  fragmentShader
+);
+
+
+gl.linkProgram(
+  program
+);
+
+
+if (
+  !gl.getProgramParameter(
+    program,
+    gl.LINK_STATUS
+  )
+) {
+
+  throw new Error(
+    gl.getProgramInfoLog(
+      program
+    )
+  );
+
+}
+
+
+gl.useProgram(
+  program
+);
+
+
+/* =========================================================
+   POSICIONES
+   ========================================================= */
+
+const positionBuffer =
+  gl.createBuffer();
+
+
+gl.bindBuffer(
+  gl.ARRAY_BUFFER,
+  positionBuffer
+);
+
+
+gl.bufferData(
+
+  gl.ARRAY_BUFFER,
+
+  new Float32Array([
+
+    -1, -1,
+     1, -1,
+    -1,  1,
+
+    -1,  1,
+     1, -1,
+     1,  1
+
+  ]),
+
+  gl.STATIC_DRAW
+
+);
+
+
+const positionLocation =
+  gl.getAttribLocation(
+    program,
+    "a_position"
+  );
+
+
+gl.enableVertexAttribArray(
+  positionLocation
+);
+
+
+gl.vertexAttribPointer(
+
+  positionLocation,
+
+  2,
+
+  gl.FLOAT,
+
+  false,
+
+  0,
+
+  0
+
+);
+
+
+/* =========================================================
+   TEXTURAS
+   ========================================================= */
+
+const texCoordBuffer =
+  gl.createBuffer();
+
+
+gl.bindBuffer(
+  gl.ARRAY_BUFFER,
+  texCoordBuffer
+);
+
+
+gl.bufferData(
+
+  gl.ARRAY_BUFFER,
+
+  new Float32Array([
+
+    0, 1,
+    1, 1,
+    0, 0,
+
+    0, 0,
+    1, 1,
+    1, 0
+
+  ]),
+
+  gl.STATIC_DRAW
+
+);
+
+
+const texCoordLocation =
+  gl.getAttribLocation(
+    program,
+    "a_texCoord"
+  );
+
+
+gl.enableVertexAttribArray(
+  texCoordLocation
+);
+
+
+gl.vertexAttribPointer(
+
+  texCoordLocation,
+
+  2,
+
+  gl.FLOAT,
+
+  false,
+
+  0,
+
+  0
+
+);
+
+
+/* =========================================================
+   TEXTURA DE CÁMARA
+   ========================================================= */
+
+const cameraTexture =
+  gl.createTexture();
+
+
+gl.bindTexture(
+  gl.TEXTURE_2D,
+  cameraTexture
+);
+
+
+gl.texParameteri(
+  gl.TEXTURE_2D,
+  gl.TEXTURE_MIN_FILTER,
+  gl.LINEAR
+);
+
+
+gl.texParameteri(
+  gl.TEXTURE_2D,
+  gl.TEXTURE_MAG_FILTER,
+  gl.LINEAR
+);
+
+
+gl.texParameteri(
+  gl.TEXTURE_2D,
+  gl.TEXTURE_WRAP_S,
+  gl.CLAMP_TO_EDGE
+);
+
+
+gl.texParameteri(
+  gl.TEXTURE_2D,
+  gl.TEXTURE_WRAP_T,
+  gl.CLAMP_TO_EDGE
+);
+
+
+/* =========================================================
+   UNIFORMS
+   ========================================================= */
+
+const uniforms = {
+
+  texture:
+    gl.getUniformLocation(
+      program,
+      "u_texture"
+    ),
+
+  brightness:
+    gl.getUniformLocation(
+      program,
+      "u_brightness"
+    ),
+
+  contrast:
+    gl.getUniformLocation(
+      program,
+      "u_contrast"
+    ),
+
+  gain:
+    gl.getUniformLocation(
+      program,
+      "u_gain"
+    ),
+
+  zoom:
+    gl.getUniformLocation(
+      program,
+      "u_zoom"
+    ),
+
+  mode:
+    gl.getUniformLocation(
+      program,
+      "u_mode"
+    ),
+
+  mirror:
+    gl.getUniformLocation(
+      program,
+      "u_mirror"
+    ),
+
+  sourceAspect:
+    gl.getUniformLocation(
+      program,
+      "u_sourceAspect"
+    ),
+
+  outputAspect:
+    gl.getUniformLocation(
+      program,
+      "u_outputAspect"
+    )
+
+};
+
+
+/* =========================================================
+   TEXTURA UNIT 0
+   ========================================================= */
+
+gl.activeTexture(
+  gl.TEXTURE0
+);
+
+
+gl.bindTexture(
+  gl.TEXTURE_2D,
+  cameraTexture
+);
+
+
+gl.uniform1i(
+  uniforms.texture,
+  0
+);
+
+
+/* =========================================================
+   RESIZE WEBGL
+   ========================================================= */
+
+function resize() {
+
+  const dpr =
+    Math.min(
+      window.devicePixelRatio || 1,
+      2
+    );
+
+
+  canvas.width =
+    Math.floor(
+      innerWidth * dpr
+    );
+
+
+  canvas.height =
+    Math.floor(
+      innerHeight * dpr
+    );
+
+
+  gl.viewport(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+}
+
+
+window.addEventListener(
+  "resize",
+  resize
+);
+
+
+resize();
+
+
+/* =========================================================
    INICIAR CÁMARA
    ========================================================= */
 
@@ -235,10 +938,12 @@ async function startCamera() {
 
   try {
 
-    if (!window.isSecureContext) {
+    if (
+      !window.isSecureContext
+    ) {
 
       throw new Error(
-        "La cámara requiere HTTPS o localhost."
+        "La cámara necesita HTTPS o localhost."
       );
 
     }
@@ -252,10 +957,6 @@ async function startCamera() {
           facingMode: {
             ideal: "environment"
           },
-
-          /*
-             Pedimos una resolución razonable.
-          */
 
           width: {
             ideal: 1280
@@ -289,7 +990,7 @@ async function startCamera() {
 
 
     /*
-       Intentar mantener 30 FPS
+       Intentar solicitar 30 FPS
     */
 
     try {
@@ -297,17 +998,21 @@ async function startCamera() {
       await track.applyConstraints({
 
         frameRate: {
+
           ideal: 30,
           max: 30
+
         }
 
       });
 
-    } catch (e) {
+    }
+
+    catch (error) {
 
       console.warn(
-        "No se pudo fijar 30 FPS de cámara",
-        e
+        "No se pudo fijar frameRate:",
+        error
       );
 
     }
@@ -330,15 +1035,11 @@ async function startCamera() {
     }
 
 
-    resize();
+    /*
+       Reiniciar contador
+    */
 
-
-    cancelAnimationFrame(
-      raf
-    );
-
-
-    lastFrameTime =
+    lastRender =
       performance.now();
 
     fpsTime =
@@ -347,13 +1048,20 @@ async function startCamera() {
     frames = 0;
 
 
+    cancelAnimationFrame(
+      raf
+    );
+
+
     render();
 
   }
 
-  catch (e) {
+  catch (error) {
 
-    console.error(e);
+    console.error(
+      error
+    );
 
 
     if ($("status")) {
@@ -365,7 +1073,7 @@ async function startCamera() {
 
 
     alert(
-      e.message ||
+      error.message ||
       "No se pudo acceder a la cámara."
     );
 
@@ -375,465 +1083,7 @@ async function startCamera() {
 
 
 /* =========================================================
-   RESIZE
-   ========================================================= */
-
-function resize() {
-
-  const dpr =
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    );
-
-
-  canvas.width =
-    Math.max(
-      640,
-      Math.floor(
-        innerWidth * dpr
-      )
-    );
-
-
-  canvas.height =
-    Math.max(
-      360,
-      Math.floor(
-        innerHeight * dpr
-      )
-    );
-
-}
-
-
-window.addEventListener(
-  "resize",
-  resize
-);
-
-
-/* =========================================================
-   CALCULAR ÁREA DE RECORTE
-   ========================================================= */
-
-function getSourceCrop() {
-
-  const vw =
-    video.videoWidth;
-
-  const vh =
-    video.videoHeight;
-
-
-  const screenAspect =
-    canvas.width /
-    canvas.height;
-
-
-  const sourceAspect =
-    vw / vh;
-
-
-  /*
-     0.8 = campo más amplio
-     1.0 = referencia
-     >1 = zoom
-  */
-
-  const zoom =
-    Math.max(
-      0.8,
-      Math.min(
-        4,
-        Number(state.zoom) || 0.8
-      )
-    );
-
-
-  let sw;
-  let sh;
-
-
-  if (
-    sourceAspect > screenAspect
-  ) {
-
-    sh =
-      vh / zoom;
-
-    sw =
-      sh * screenAspect;
-
-  } else {
-
-    sw =
-      vw / zoom;
-
-    sh =
-      sw / screenAspect;
-
-  }
-
-
-  /*
-     Asegurar límites
-  */
-
-  sw =
-    Math.min(
-      vw,
-      Math.max(
-        1,
-        sw
-      )
-    );
-
-
-  sh =
-    Math.min(
-      vh,
-      Math.max(
-        1,
-        sh
-      )
-    );
-
-
-  const sx =
-    (vw - sw) / 2;
-
-
-  const sy =
-    (vh - sh) / 2;
-
-
-  return {
-    sx,
-    sy,
-    sw,
-    sh
-  };
-
-}
-
-
-/* =========================================================
-   PROCESAR IMAGEN
-   ========================================================= */
-
-function processImage() {
-
-  if (!video.videoWidth) {
-
-    return;
-
-  }
-
-
-  const crop =
-    getSourceCrop();
-
-
-  /*
-     Dibujar cámara en canvas pequeño
-  */
-
-  workCtx.drawImage(
-
-    video,
-
-    crop.sx,
-    crop.sy,
-    crop.sw,
-    crop.sh,
-
-    0,
-    0,
-    WORK_WIDTH,
-    WORK_HEIGHT
-
-  );
-
-
-  /*
-     Obtener píxeles
-  */
-
-  const image =
-    workCtx.getImageData(
-      0,
-      0,
-      WORK_WIDTH,
-      WORK_HEIGHT
-    );
-
-
-  const data =
-    image.data;
-
-
-  const brightness =
-    Number(state.brightness);
-
-  const contrast =
-    Number(state.contrast);
-
-  const gain =
-    Number(state.gain);
-
-
-  /*
-     Procesamiento de color
-  */
-
-  for (
-    let i = 0;
-    i < data.length;
-    i += 4
-  ) {
-
-    let y =
-
-      (
-        0.2126 * data[i] +
-        0.7152 * data[i + 1] +
-        0.0722 * data[i + 2]
-      ) / 255;
-
-
-    /*
-       Contraste
-    */
-
-    y =
-      (
-        (y - 0.5) *
-        contrast
-      ) + 0.5;
-
-
-    /*
-       Brillo + ganancia
-    */
-
-    y *=
-      brightness *
-      gain;
-
-
-    /*
-       Limitar
-    */
-
-    y =
-      Math.max(
-        0,
-        Math.min(
-          1,
-          y
-        )
-      );
-
-
-    /*
-       MODO VERDE
-    */
-
-    if (mode === 0) {
-
-      data[i] =
-        y * 105;
-
-      data[i + 1] =
-        y * 255;
-
-      data[i + 2] =
-        y * 115;
-
-    }
-
-
-    /*
-       BLANCO Y NEGRO
-    */
-
-    else if (mode === 1) {
-
-      const q =
-        y * 255;
-
-      data[i] =
-        q;
-
-      data[i + 1] =
-        q;
-
-      data[i + 2] =
-        q;
-
-    }
-
-
-    /*
-       ROJO
-    */
-
-    else if (mode === 2) {
-
-      data[i] =
-        y * 255;
-
-      data[i + 1] =
-        y * 65;
-
-      data[i + 2] =
-        y * 30;
-
-    }
-
-
-    /*
-       INVERSO
-    */
-
-    else {
-
-      const q =
-        (1 - y) * 255;
-
-      data[i] =
-        q;
-
-      data[i + 1] =
-        q;
-
-      data[i + 2] =
-        q;
-
-    }
-
-  }
-
-
-  /*
-     Volver a poner los píxeles
-  */
-
-  workCtx.putImageData(
-    image,
-    0,
-    0
-  );
-
-
-  /*
-     Limpiar pantalla
-  */
-
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  /*
-     Espejo
-  */
-
-  ctx.save();
-
-
-  if (mirror) {
-
-    ctx.translate(
-      canvas.width,
-      0
-    );
-
-    ctx.scale(
-      -1,
-      1
-    );
-
-  }
-
-
-  /*
-     VR
-  */
-
-  if (vr) {
-
-    const half =
-      canvas.width / 2;
-
-
-    ctx.drawImage(
-
-      workCanvas,
-
-      0,
-      0,
-      WORK_WIDTH,
-      WORK_HEIGHT,
-
-      0,
-      0,
-      half,
-      canvas.height
-
-    );
-
-
-    ctx.drawImage(
-
-      workCanvas,
-
-      0,
-      0,
-      WORK_WIDTH,
-      WORK_HEIGHT,
-
-      half,
-      0,
-      half,
-      canvas.height
-
-    );
-
-  }
-
-  else {
-
-    ctx.drawImage(
-
-      workCanvas,
-
-      0,
-      0,
-      WORK_WIDTH,
-      WORK_HEIGHT,
-
-      0,
-      0,
-      canvas.width,
-      canvas.height
-
-    );
-
-  }
-
-
-  ctx.restore();
-
-}
-
-
-/* =========================================================
-   RENDER A 30 FPS
+   RENDER GPU
    ========================================================= */
 
 function render(timestamp) {
@@ -847,29 +1097,35 @@ function render(timestamp) {
 
 
   /*
-     Limitar a aproximadamente 30 FPS
+     Limitar a 30 FPS.
   */
 
   if (
     timestamp -
-    lastFrameTime >=
+    lastRender >=
     FRAME_INTERVAL
   ) {
 
-    lastFrameTime =
+    lastRender =
       timestamp;
 
 
-    processImage();
+    if (
+      video.readyState >=
+      HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
 
+      drawWebGL();
 
-    frames++;
+      frames++;
+
+    }
 
   }
 
 
   /*
-     Contador FPS
+     Mostrar FPS
   */
 
   if (
@@ -903,7 +1159,273 @@ function render(timestamp) {
 
 
 /* =========================================================
-   BOTÓN ACTIVAR
+   DIBUJAR CÁMARA EN GPU
+   ========================================================= */
+
+function drawWebGL() {
+
+  if (
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+
+    return;
+
+  }
+
+
+  /*
+     Subir frame de cámara a textura.
+  */
+
+  gl.bindTexture(
+    gl.TEXTURE_2D,
+    cameraTexture
+  );
+
+
+  gl.pixelStorei(
+    gl.UNPACK_FLIP_Y_WEBGL,
+    true
+  );
+
+
+  gl.texImage2D(
+
+    gl.TEXTURE_2D,
+
+    0,
+
+    gl.RGBA,
+
+    gl.RGBA,
+
+    gl.UNSIGNED_BYTE,
+
+    video
+
+  );
+
+
+  /*
+     Parámetros
+  */
+
+  gl.uniform1f(
+    uniforms.brightness,
+    Number(
+      state.brightness
+    )
+  );
+
+
+  gl.uniform1f(
+    uniforms.contrast,
+    Number(
+      state.contrast
+    )
+  );
+
+
+  gl.uniform1f(
+    uniforms.gain,
+    Number(
+      state.gain
+    )
+  );
+
+
+  gl.uniform1f(
+    uniforms.zoom,
+    Math.max(
+      0.8,
+      Math.min(
+        4,
+        Number(state.zoom)
+      )
+    )
+  );
+
+
+  gl.uniform1f(
+    uniforms.mode,
+    mode
+  );
+
+
+  gl.uniform1f(
+    uniforms.mirror,
+    mirror
+      ? 1
+      : 0
+  );
+
+
+  gl.uniform2f(
+
+    uniforms.sourceAspect,
+
+    video.videoWidth,
+    video.videoHeight
+
+  );
+
+
+  gl.uniform2f(
+
+    uniforms.outputAspect,
+
+    canvas.width,
+    canvas.height
+
+  );
+
+
+  /*
+     Limpiar
+  */
+
+  gl.clearColor(
+    0,
+    0,
+    0,
+    1
+  );
+
+
+  gl.clear(
+    gl.COLOR_BUFFER_BIT
+  );
+
+
+  /*
+     Dibujar.
+  */
+
+  if (vr) {
+
+    /*
+       Para VR necesitamos dos pasadas.
+       Por ahora dibujamos la misma imagen
+       en ambos lados.
+
+       La GPU sigue haciendo el procesamiento.
+    */
+
+    gl.enable(
+      gl.SCISSOR_TEST
+    );
+
+
+    /*
+       Ojo izquierdo
+    */
+
+    gl.scissor(
+
+      0,
+      0,
+      canvas.width / 2,
+      canvas.height
+
+    );
+
+
+    gl.viewport(
+
+      0,
+      0,
+      canvas.width / 2,
+      canvas.height
+
+    );
+
+
+    gl.drawArrays(
+
+      gl.TRIANGLES,
+      0,
+      6
+
+    );
+
+
+    /*
+       Ojo derecho
+    */
+
+    gl.scissor(
+
+      canvas.width / 2,
+      0,
+      canvas.width / 2,
+      canvas.height
+
+    );
+
+
+    gl.viewport(
+
+      canvas.width / 2,
+      0,
+      canvas.width / 2,
+      canvas.height
+
+    );
+
+
+    gl.drawArrays(
+
+      gl.TRIANGLES,
+      0,
+      6
+
+    );
+
+
+    gl.disable(
+      gl.SCISSOR_TEST
+    );
+
+
+    gl.viewport(
+
+      0,
+      0,
+      canvas.width,
+      canvas.height
+
+    );
+
+  }
+
+  else {
+
+    gl.viewport(
+
+      0,
+      0,
+      canvas.width,
+      canvas.height
+
+    );
+
+
+    gl.drawArrays(
+
+      gl.TRIANGLES,
+      0,
+      6
+
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   BOTÓN ACTIVAR CÁMARA
    ========================================================= */
 
 if ($("startBtn")) {
@@ -961,30 +1483,26 @@ for (
   ]
 ) {
 
-  const control =
+  const element =
     $(id);
 
 
-  if (!control) {
+  if (!element) {
 
     continue;
 
   }
 
 
-  control.addEventListener(
+  element.addEventListener(
     "input",
     () => {
 
       state[id] =
         Number(
-          control.value
+          element.value
         );
 
-
-      /*
-         Protección zoom
-      */
 
       if (
         id === "zoom"
@@ -999,12 +1517,12 @@ for (
             )
           );
 
+
+        element.value =
+          state.zoom;
+
       }
 
-
-      /*
-         Mostrar valor
-      */
 
       const output =
         $(`${id}Out`);
@@ -1076,7 +1594,7 @@ document
            VR
         --------------------------------- */
 
-        if (
+        else if (
           action === "vr"
         ) {
 
@@ -1112,7 +1630,7 @@ document
            RETÍCULA
         --------------------------------- */
 
-        if (
+        else if (
           action === "crosshair"
         ) {
 
@@ -1145,7 +1663,7 @@ document
            ESPEJO
         --------------------------------- */
 
-        if (
+        else if (
           action === "mirror"
         ) {
 
@@ -1165,10 +1683,10 @@ document
 
 
         /* ---------------------------------
-           PANTALLA COMPLETA
+           FULLSCREEN
         --------------------------------- */
 
-        if (
+        else if (
           action === "fullscreen"
         ) {
 
@@ -1178,7 +1696,8 @@ document
               document.fullscreenElement
             ) {
 
-              await document.exitFullscreen?.();
+              await document
+                .exitFullscreen?.();
 
             }
 
@@ -1192,11 +1711,11 @@ document
 
           }
 
-          catch (e) {
+          catch (error) {
 
             console.warn(
-              "Fullscreen no disponible",
-              e
+              "Fullscreen:",
+              error
             );
 
           }
@@ -1208,7 +1727,7 @@ document
            LINTERNA
         --------------------------------- */
 
-        if (
+        else if (
           action === "torch"
         ) {
 
@@ -1268,11 +1787,11 @@ document
 
           }
 
-          catch (e) {
+          catch (error) {
 
             console.warn(
-              "No se pudo activar la linterna",
-              e
+              "Linterna:",
+              error
             );
 
           }
@@ -1314,7 +1833,7 @@ if ($("resetBtn")) {
 
 
 /* =========================================================
-   DOBLE TOQUE → FULLSCREEN
+   DOBLE CLICK → FULLSCREEN
    ========================================================= */
 
 document.addEventListener(
@@ -1330,7 +1849,7 @@ document.addEventListener(
 
 
 /* =========================================================
-   CERRAR CÁMARA AL SALIR
+   DETENER CÁMARA
    ========================================================= */
 
 window.addEventListener(
@@ -1342,7 +1861,7 @@ window.addEventListener(
       stream
         .getTracks()
         .forEach(
-          track => track.stop()
+          t => t.stop()
         );
 
     }
