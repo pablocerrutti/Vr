@@ -1,7 +1,15 @@
 /* =========================================
-   NIGHT VISION
-   Aplicación de cámara offline
-   V1.1.0
+   LONEWOLF NIGHTVISION VR
+   V1.2
+
+   Cámara trasera
+   Visión nocturna digital
+   Verde / B-N / Térmico
+   Brillo / Contraste / Ganancia / Zoom
+   VR Box
+   Retícula
+   Medición tangencial 30-100 m
+   Referencia 50 x 50 cm
 ========================================= */
 
 
@@ -13,216 +21,326 @@ const video =
     document.getElementById("camera");
 
 const canvas =
-    document.getElementById("nightCanvas");
+    document.getElementById("view");
 
 const ctx =
-    canvas.getContext("2d", {
-        willReadFrequently: true
-    });
-
-
-const loading =
-    document.getElementById("loading");
-
-const cameraStatus =
-    document.getElementById("cameraStatus");
-
-
-const cameraButton =
-    document.getElementById("cameraButton");
-
-const nightButton =
-    document.getElementById("nightButton");
-
-const reticleButton =
-    document.getElementById("reticleButton");
-
-const switchButton =
-    document.getElementById("switchButton");
-
-
-const reticle =
-    document.getElementById("reticle");
-
-
-const distanceScale =
-    document.getElementById(
-        "distanceScale"
+    canvas.getContext(
+        "2d",
+        {
+            alpha: false,
+            willReadFrequently: true
+        }
     );
 
 
-const distanceHud =
-    document.getElementById(
-        "distanceHud"
-    );
-
-
-const distanceInstruction =
-    document.getElementById(
-        "distanceInstruction"
-    );
+const $ =
+    id =>
+        document.getElementById(id);
 
 
 /* =========================================
-   CONFIGURACIÓN
+   ESTADO
 ========================================= */
 
-const DISTANCE_CONFIG = {
+let stream = null;
+
+let track = null;
+
+let raf = 0;
+
+let lastTime =
+    performance.now();
+
+let frames = 0;
+
+
+/*
+ * Modos:
+ *
+ * 0 = verde
+ * 1 = blanco/negro
+ * 2 = térmico
+ */
+
+let mode = 0;
+
+
+/*
+ * VR Box
+ */
+
+let vr = false;
+
+
+/*
+ * Retícula
+ */
+
+let cross = true;
+
+
+/*
+ * Espejo
+ */
+
+let mirror = false;
+
+
+/*
+ * Linterna
+ */
+
+let torch = false;
+
+
+/* =========================================
+   CONFIGURACIÓN ÓPTICA
+========================================= */
+
+const MEASUREMENT = {
 
     /*
-     * Altura de la cámara respecto
-     * al suelo.
+     * Altura de la cámara
+     * respecto al suelo.
      */
+
     cameraHeight: 1.65,
 
 
     /*
-     * Altura de referencia corporal.
+     * Tamaño conocido del objeto.
      */
-    targetHeight: 1.70,
+
+    targetWidth: 0.50,
+
+    targetHeight: 0.50,
 
 
     /*
-     * Anchura de referencia corporal.
+     * Rango útil.
      */
-    targetWidth: 0.45,
 
+    minDistance: 30,
 
-    /*
-     * Distancia máxima de la escala.
-     */
     maxDistance: 100,
 
 
     /*
-     * FOV VERTICAL INICIAL.
+     * FOV vertical inicial
+     * de referencia.
      *
-     * Es un valor de calibración.
-     *
-     * Se podrá ajustar posteriormente
-     * con pruebas reales.
+     * Se podrá calibrar
+     * posteriormente.
      */
 
-    verticalFovPortrait: 50,
-
-    verticalFovLandscape: 37
+    verticalFov:
+        50
 
 };
 
 
-/*
- * Distancias que aparecerán
- * en la retícula.
- */
+/* =========================================
+   MARCAS DE DISTANCIA
+========================================= */
 
-const DISTANCE_MARKS = [
+const DISTANCES = [
 
-    10,
-    15,
-    20,
-    25,
     30,
+    35,
     40,
+    45,
     50,
+    55,
     60,
+    65,
+    70,
+    75,
     80,
+    85,
+    90,
+    95,
     100
 
 ];
 
 
 /* =========================================
-   VARIABLES
+   CONFIGURACIÓN DE IMAGEN
 ========================================= */
 
-let stream = null;
+const state = {
 
-let cameraFacing =
-    "environment";
+    brightness: 1.20,
 
-let nightVisionEnabled =
-    true;
+    contrast: 1.35,
 
-let reticleEnabled =
-    false;
+    gain: 1.00,
 
-let animationFrame =
-    null;
+    zoom: 0.8
+
+};
 
 
 /* =========================================
-   INICIAR
+   CARGAR ESTADO
 ========================================= */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+function loadState() {
 
-        iniciarAplicacion();
+    try {
 
-    }
-);
-
-
-/* =========================================
-   APLICACIÓN
-========================================= */
-
-async function iniciarAplicacion() {
-
-    ajustarCanvas();
-
-    generarEscalaDistancia();
-
-    window.addEventListener(
-        "resize",
-        () => {
-
-            ajustarCanvas();
-
-            if (reticleEnabled) {
-
-                generarEscalaDistancia();
-
-            }
-
-        }
-    );
+        const saved =
+            localStorage.getItem(
+                "lonewolf_nvvr_v4"
+            );
 
 
-    window.addEventListener(
-        "orientationchange",
-        () => {
+        if (saved) {
 
-            setTimeout(
-                () => {
-
-                    ajustarCanvas();
-
-                    if (reticleEnabled) {
-
-                        generarEscalaDistancia();
-
-                    }
-
-                },
-                300
+            Object.assign(
+                state,
+                JSON.parse(saved)
             );
 
         }
-    );
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudo cargar configuración:",
+            error
+        );
+
+    }
 
 
-    await iniciarCamara();
+    if (
+        !Number.isFinite(
+            state.zoom
+        ) ||
+        state.zoom < 0.8
+    ) {
+
+        state.zoom = 0.8;
+
+    }
+
+
+    updateControls();
 
 }
 
 
 /* =========================================
-   CANVAS
+   GUARDAR ESTADO
 ========================================= */
 
-function ajustarCanvas() {
+function saveState() {
+
+    try {
+
+        localStorage.setItem(
+            "lonewolf_nvvr_v4",
+            JSON.stringify(state)
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "No se pudo guardar configuración:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   ACTUALIZAR CONTROLES
+========================================= */
+
+function updateControls() {
+
+    Object.keys(state)
+        .forEach(
+            key => {
+
+                const control =
+                    $(key);
+
+                if (control) {
+
+                    control.value =
+                        state[key];
+
+                }
+
+            }
+        );
+
+
+    if ($("brightnessOut")) {
+
+        $("brightnessOut")
+            .textContent =
+            Number(
+                state.brightness
+            ).toFixed(2);
+
+    }
+
+
+    if ($("contrastOut")) {
+
+        $("contrastOut")
+            .textContent =
+            Number(
+                state.contrast
+            ).toFixed(2);
+
+    }
+
+
+    if ($("gainOut")) {
+
+        $("gainOut")
+            .textContent =
+            Number(
+                state.gain
+            ).toFixed(2);
+
+    }
+
+
+    if ($("zoomOut")) {
+
+        $("zoomOut")
+            .textContent =
+            Number(
+                state.zoom
+            ).toFixed(1)
+            + "×";
+
+    }
+
+}
+
+
+/* =========================================
+   INICIO
+========================================= */
+
+loadState();
+
+generarEscala();
+
+
+/* =========================================
+   REDIMENSIONAR
+========================================= */
+
+function resize() {
 
     const dpr =
         Math.min(
@@ -232,41 +350,79 @@ function ajustarCanvas() {
 
 
     canvas.width =
-        Math.floor(
-            window.innerWidth * dpr
+        Math.max(
+            640,
+            Math.floor(
+                window.innerWidth *
+                dpr
+            )
         );
 
 
     canvas.height =
-        Math.floor(
-            window.innerHeight * dpr
+        Math.max(
+            360,
+            Math.floor(
+                window.innerHeight *
+                dpr
+            )
         );
+
+
+    generarEscala();
 
 }
 
 
+window.addEventListener(
+    "resize",
+    resize
+);
+
+
+window.addEventListener(
+    "orientationchange",
+    () => {
+
+        setTimeout(
+            resize,
+            300
+        );
+
+    }
+);
+
+
 /* =========================================
-   CÁMARA
+   INICIAR CÁMARA
 ========================================= */
 
-async function iniciarCamara() {
-
-    detenerCamara();
-
+async function startCamera() {
 
     try {
 
         if (
-            !navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia
+            !window.isSecureContext
         ) {
 
             throw new Error(
-                "La cámara no está disponible."
+                "La cámara necesita HTTPS o localhost."
             );
 
         }
 
+
+        /*
+         * Si ya existe una cámara,
+         * detenerla primero.
+         */
+
+        stopCamera();
+
+
+        /*
+         * SOLO CÁMARA TRASERA.
+         */
 
         stream =
             await navigator
@@ -276,37 +432,28 @@ async function iniciarCamara() {
                     video: {
 
                         facingMode: {
-
-                            ideal:
-                                cameraFacing
-
+                            exact:
+                                "environment"
                         },
-
 
                         width: {
-
-                            ideal: 1920
-
+                            ideal:
+                                1920
                         },
-
 
                         height: {
-
-                            ideal: 1080
-
+                            ideal:
+                                1080
                         },
 
-
                         frameRate: {
-
-                            ideal: 30,
-
-                            max: 30
-
+                            ideal:
+                                30,
+                            max:
+                                30
                         }
 
                     },
-
 
                     audio: false
 
@@ -320,33 +467,67 @@ async function iniciarCamara() {
         await video.play();
 
 
-        cameraStatus.textContent =
-            "CAM OK";
+        track =
+            stream
+                .getVideoTracks()[0];
 
 
-        loading.classList.add(
-            "hidden"
+        if ($("startPanel")) {
+
+            $("startPanel")
+                .classList
+                .add("hidden");
+
+        }
+
+
+        if ($("status")) {
+
+            $("status")
+                .textContent =
+                "CÁMARA ACTIVA";
+
+        }
+
+
+        resize();
+
+
+        cancelAnimationFrame(
+            raf
         );
 
 
-        comenzarProcesamiento();
+        lastTime =
+            performance.now();
+
+
+        frames = 0;
+
+
+        render();
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
 
-        cameraStatus.textContent =
-            "SIN CÁMARA";
+        if ($("status")) {
+
+            $("status")
+                .textContent =
+                "ERROR CÁMARA";
+
+        }
 
 
-        loading
-            .querySelector(
-                ".loading-text"
-            )
-            .textContent =
-            "Permite el acceso a la cámara";
+        alert(
+            error.message ||
+            "No se pudo acceder a la cámara trasera."
+        );
 
     }
 
@@ -357,7 +538,7 @@ async function iniciarCamara() {
    DETENER CÁMARA
 ========================================= */
 
-function detenerCamara() {
+function stopCamera() {
 
     if (!stream) {
 
@@ -369,162 +550,315 @@ function detenerCamara() {
     stream
         .getTracks()
         .forEach(
-            track => track.stop()
+            track =>
+                track.stop()
         );
 
 
     stream = null;
 
-}
-
-
-/* =========================================
-   PROCESAMIENTO
-========================================= */
-
-function comenzarProcesamiento() {
-
-    if (animationFrame) {
-
-        cancelAnimationFrame(
-            animationFrame
-        );
-
-    }
-
-
-    procesarImagen();
+    track = null;
 
 }
 
 
 /* =========================================
-   VISIÓN NOCTURNA
+   PROCESAMIENTO PRINCIPAL
 ========================================= */
 
-function procesarImagen() {
+function processFrame() {
 
     if (
-        video.readyState >= 2 &&
-        canvas.width > 0 &&
-        canvas.height > 0
+        !video.videoWidth ||
+        !video.videoHeight
     ) {
 
-        const videoRatio =
-            video.videoWidth /
-            video.videoHeight;
-
-
-        const canvasRatio =
-            canvas.width /
-            canvas.height;
-
-
-        let drawWidth =
-            canvas.width;
-
-
-        let drawHeight =
-            canvas.height;
-
-
-        let offsetX = 0;
-
-        let offsetY = 0;
-
-
-        /*
-         * Mantener proporción
-         * object-fit: cover.
-         */
-
-        if (
-            videoRatio >
-            canvasRatio
-        ) {
-
-            drawHeight =
-                canvas.height;
-
-
-            drawWidth =
-                drawHeight *
-                videoRatio;
-
-
-            offsetX =
-                (
-                    canvas.width -
-                    drawWidth
-                ) / 2;
-
-
-        } else {
-
-            drawWidth =
-                canvas.width;
-
-
-            drawHeight =
-                drawWidth /
-                videoRatio;
-
-
-            offsetY =
-                (
-                    canvas.height -
-                    drawHeight
-                ) / 2;
-
-        }
-
-
-        ctx.drawImage(
-            video,
-            offsetX,
-            offsetY,
-            drawWidth,
-            drawHeight
-        );
-
-
-        if (
-            nightVisionEnabled
-        ) {
-
-            aplicarVisionNocturna();
-
-        }
+        return;
 
     }
 
 
-    animationFrame =
-        requestAnimationFrame(
-            procesarImagen
+    const w =
+        canvas.width;
+
+    const h =
+        canvas.height;
+
+
+    const vw =
+        video.videoWidth;
+
+    const vh =
+        video.videoHeight;
+
+
+    const aspect =
+        w / h;
+
+    const sourceAspect =
+        vw / vh;
+
+
+    const zoom =
+        Math.max(
+            0.8,
+            Number(
+                state.zoom
+            ) || 0.8
         );
+
+
+    let sw;
+
+    let sh;
+
+
+    /*
+     * Zoom manteniendo
+     * relación de aspecto.
+     */
+
+    if (
+        sourceAspect >
+        aspect
+    ) {
+
+        sh =
+            vh / zoom;
+
+        sw =
+            sh * aspect;
+
+    } else {
+
+        sw =
+            vw / zoom;
+
+        sh =
+            sw / aspect;
+
+    }
+
+
+    sw =
+        Math.min(
+            sw,
+            vw
+        );
+
+
+    sh =
+        Math.min(
+            sh,
+            vh
+        );
+
+
+    const sx =
+        Math.max(
+            0,
+            (vw - sw) / 2
+        );
+
+
+    const sy =
+        Math.max(
+            0,
+            (vh - sh) / 2
+        );
+
+
+    ctx.clearRect(
+        0,
+        0,
+        w,
+        h
+    );
+
+
+    /*
+     * VR
+     */
+
+    if (vr) {
+
+        drawEye(
+            sx,
+            sy,
+            sw,
+            sh,
+            0,
+            0,
+            w / 2,
+            h
+        );
+
+
+        drawEye(
+            sx,
+            sy,
+            sw,
+            sh,
+            0,
+            w / 2,
+            w / 2,
+            h
+        );
+
+    } else {
+
+        drawEye(
+            sx,
+            sy,
+            sw,
+            sh,
+            0,
+            0,
+            w,
+            h
+        );
+
+    }
 
 }
 
 
 /* =========================================
-   EFECTO VISIÓN NOCTURNA
+   DIBUJAR OJO
 ========================================= */
 
-function aplicarVisionNocturna() {
+function drawEye(
+    sx,
+    sy,
+    sw,
+    sh,
+    unused,
+    dx,
+    dw,
+    dh
+) {
 
-    const image =
-        ctx.getImageData(
+    /*
+     * Canvas temporal.
+     */
+
+    const temp =
+        document.createElement(
+            "canvas"
+        );
+
+
+    temp.width =
+        Math.max(
+            1,
+            Math.floor(dw)
+        );
+
+
+    temp.height =
+        Math.max(
+            1,
+            Math.floor(dh)
+        );
+
+
+    const t =
+        temp.getContext(
+            "2d",
+            {
+                willReadFrequently:
+                    true
+            }
+        );
+
+
+    /*
+     * Espejo
+     */
+
+    if (mirror) {
+
+        t.save();
+
+        t.translate(
+            temp.width,
+            0
+        );
+
+        t.scale(
+            -1,
+            1
+        );
+
+        t.drawImage(
+            video,
+            sx,
+            sy,
+            sw,
+            sh,
             0,
             0,
-            canvas.width,
-            canvas.height
+            temp.width,
+            temp.height
+        );
+
+        t.restore();
+
+    } else {
+
+        t.drawImage(
+            video,
+            sx,
+            sy,
+            sw,
+            sh,
+            0,
+            0,
+            temp.width,
+            temp.height
+        );
+
+    }
+
+
+    /*
+     * Datos de imagen.
+     */
+
+    const img =
+        t.getImageData(
+            0,
+            0,
+            temp.width,
+            temp.height
         );
 
 
     const data =
-        image.data;
+        img.data;
 
+
+    const brightness =
+        Number(
+            state.brightness
+        );
+
+
+    const gain =
+        Number(
+            state.gain
+        );
+
+
+    const contrast =
+        Number(
+            state.contrast
+        );
+
+
+    /*
+     * Procesar cada píxel.
+     */
 
     for (
         let i = 0;
@@ -532,109 +866,369 @@ function aplicarVisionNocturna() {
         i += 4
     ) {
 
-        const r =
-            data[i];
-
-
-        const g =
-            data[i + 1];
-
-
-        const b =
-            data[i + 2];
-
-
-        /*
-         * Luminancia.
-         */
-
-        const luminance =
-            0.299 * r +
-            0.587 * g +
-            0.114 * b;
-
-
-        /*
-         * Amplificación de sombras.
-         */
-
-        let value =
+        let y =
             (
-                luminance -
-                20
-            ) * 1.45;
+                0.2126 *
+                data[i]
+
+                +
+
+                0.7152 *
+                data[i + 1]
+
+                +
+
+                0.0722 *
+                data[i + 2]
+            ) / 255;
 
 
-        value =
+        /*
+         * Contraste.
+         */
+
+        y =
+            (
+                (y - 0.5) *
+                contrast
+            ) + 0.5;
+
+
+        /*
+         * Brillo y ganancia.
+         */
+
+        y *=
+            brightness *
+            gain;
+
+
+        /*
+         * Limitar.
+         */
+
+        y =
             Math.max(
                 0,
                 Math.min(
-                    255,
-                    value
+                    1,
+                    y
                 )
             );
 
 
         /*
-         * Tonalidad verde.
+         * Aplicar modo.
          */
 
-        data[i] =
-            value * 0.12;
+        if (
+            mode === 0
+        ) {
+
+            /*
+             * VERDE
+             */
+
+            data[i] =
+                y * 75;
+
+            data[i + 1] =
+                y * 255;
+
+            data[i + 2] =
+                y * 95;
+
+        }
 
 
-        data[i + 1] =
-            value * 1.00;
+        else if (
+            mode === 1
+        ) {
+
+            /*
+             * BLANCO / NEGRO
+             */
+
+            const q =
+                y * 255;
 
 
-        data[i + 2] =
-            value * 0.18;
+            data[i] =
+                q;
+
+            data[i + 1] =
+                q;
+
+            data[i + 2] =
+                q;
+
+        }
+
+
+        else {
+
+            /*
+             * MAPA TÉRMICO
+             *
+             * Pseudocolor.
+             */
+
+            const rgb =
+                thermalColor(
+                    y
+                );
+
+
+            data[i] =
+                rgb.r;
+
+            data[i + 1] =
+                rgb.g;
+
+            data[i + 2] =
+                rgb.b;
+
+        }
 
     }
 
 
-    ctx.putImageData(
-        image,
+    t.putImageData(
+        img,
         0,
         0
+    );
+
+
+    ctx.drawImage(
+        temp,
+        dx,
+        0,
+        dw,
+        dh
     );
 
 }
 
 
 /* =========================================
-   FOV VERTICAL
+   MAPA TÉRMICO PSEUDOCOLOR
 ========================================= */
 
-function obtenerFovVertical() {
+function thermalColor(
+    value
+) {
+
+    value =
+        Math.max(
+            0,
+            Math.min(
+                1,
+                value
+            )
+        );
+
+
+    /*
+     * Azul → cian → verde
+     * → amarillo → rojo → blanco
+     */
+
+    let r = 0;
+
+    let g = 0;
+
+    let b = 0;
+
 
     if (
-        window.innerWidth >
-        window.innerHeight
+        value < 0.20
     ) {
 
-        return DISTANCE_CONFIG
-            .verticalFovLandscape;
+        const t =
+            value / 0.20;
+
+        r = 0;
+
+        g =
+            Math.floor(
+                60 * t
+            );
+
+        b =
+            Math.floor(
+                150 +
+                105 * t
+            );
 
     }
 
 
-    return DISTANCE_CONFIG
-        .verticalFovPortrait;
+    else if (
+        value < 0.40
+    ) {
+
+        const t =
+            (
+                value -
+                0.20
+            ) / 0.20;
+
+        r = 0;
+
+        g =
+            Math.floor(
+                60 +
+                195 * t
+            );
+
+        b =
+            255 -
+            Math.floor(
+                180 * t
+            );
+
+    }
+
+
+    else if (
+        value < 0.60
+    ) {
+
+        const t =
+            (
+                value -
+                0.40
+            ) / 0.20;
+
+        r =
+            Math.floor(
+                255 * t
+            );
+
+        g = 255;
+
+        b =
+            Math.floor(
+                75 *
+                (1 - t)
+            );
+
+    }
+
+
+    else if (
+        value < 0.80
+    ) {
+
+        const t =
+            (
+                value -
+                0.60
+            ) / 0.20;
+
+        r = 255;
+
+        g =
+            255 -
+            Math.floor(
+                180 * t
+            );
+
+        b = 0;
+
+    }
+
+
+    else {
+
+        const t =
+            (
+                value -
+                0.80
+            ) / 0.20;
+
+        r = 255;
+
+        g =
+            Math.floor(
+                75 * t
+            );
+
+        b =
+            Math.floor(
+                75 * t
+            );
+
+    }
+
+
+    return {
+        r,
+        g,
+        b
+    };
 
 }
 
 
 /* =========================================
-   CONVERSIÓN DE ÁNGULOS
+   RENDER
 ========================================= */
 
-function gradosARadianes(
-    grados
+function render() {
+
+    processFrame();
+
+
+    frames++;
+
+
+    const now =
+        performance.now();
+
+
+    if (
+        now -
+        lastTime >=
+        1000
+    ) {
+
+        if ($("fps")) {
+
+            $("fps")
+                .textContent =
+                frames +
+                " FPS";
+
+        }
+
+
+        frames = 0;
+
+        lastTime = now;
+
+    }
+
+
+    raf =
+        requestAnimationFrame(
+            render
+        );
+
+}
+
+
+/* =========================================
+   ÁNGULOS
+========================================= */
+
+function degreesToRadians(
+    degrees
 ) {
 
     return (
-        grados *
+        degrees *
         Math.PI /
         180
     );
@@ -646,13 +1240,22 @@ function gradosARadianes(
    DISTANCIA → ÁNGULO
 ========================================= */
 
-function calcularAnguloParaDistancia(
-    distancia
+/*
+ * Para la medición tangencial
+ * de la BASE del objeto:
+ *
+ * D = H / tan(theta)
+ *
+ * H = 1.65 m
+ */
+
+function distanceToAngle(
+    distance
 ) {
 
     return Math.atan(
-        DISTANCE_CONFIG.cameraHeight /
-        distancia
+        MEASUREMENT.cameraHeight /
+        distance
     );
 
 }
@@ -662,12 +1265,12 @@ function calcularAnguloParaDistancia(
    ÁNGULO → DISTANCIA
 ========================================= */
 
-function calcularDistanciaDesdeAngulo(
-    angulo
+function angleToDistance(
+    angle
 ) {
 
     if (
-        angulo <= 0
+        angle <= 0
     ) {
 
         return Infinity;
@@ -676,111 +1279,171 @@ function calcularDistanciaDesdeAngulo(
 
 
     return (
-        DISTANCE_CONFIG.cameraHeight /
-        Math.tan(angulo)
+        MEASUREMENT.cameraHeight /
+        Math.tan(angle)
     );
 
 }
 
 
 /* =========================================
-   POSICIÓN DE LA MARCA
+   ÁNGULO DE TAMAÑO DEL OBJETO
 ========================================= */
 
 /*
- * Devuelve la posición vertical
- * de una distancia dentro de la
- * retícula.
- *
- * 0.5 = centro óptico.
- *
- * La base de un objeto sobre el suelo
- * aparece por debajo del centro porque
- * la cámara está a 1.65 m.
+ * Ángulo vertical que ocupa
+ * un objeto de 50 cm.
  */
 
-function obtenerPosicionMarca(
-    distancia
+function targetAngularSize(
+    distance
 ) {
 
-    const fov =
-        gradosARadianes(
-            obtenerFovVertical()
+    return 2 *
+        Math.atan(
+            (
+                MEASUREMENT.targetHeight /
+                2
+            ) /
+            distance
         );
-
-
-    const medioFov =
-        fov / 2;
-
-
-    const angulo =
-        calcularAnguloParaDistancia(
-            distancia
-        );
-
-
-    /*
-     * Relación angular respecto
-     * al centro de la imagen.
-     */
-
-    const proporcion =
-        Math.tan(angulo) /
-        Math.tan(medioFov);
-
-
-    /*
-     * Convertir a porcentaje.
-     *
-     * 0.5 = centro.
-     *
-     * 1.0 = parte inferior.
-     */
-
-    const posicion =
-        0.5 +
-        proporcion * 0.5;
-
-
-    return posicion;
 
 }
 
 
 /* =========================================
-   ESCALA DE DISTANCIA
+   POSICIÓN DE BASE
 ========================================= */
 
-function generarEscalaDistancia() {
+/*
+ * La línea de base de un objetivo
+ * colocado en el suelo.
+ *
+ * La cámara está a 1.65 m.
+ */
 
-    if (!distanceScale) {
+function distanceToScreenY(
+    distance
+) {
+
+    const fov =
+        degreesToRadians(
+            MEASUREMENT.verticalFov
+        );
+
+
+    const halfFov =
+        fov / 2;
+
+
+    const angle =
+        distanceToAngle(
+            distance
+        );
+
+
+    /*
+     * Proyección aproximada
+     * sobre el eje vertical.
+     */
+
+    const normalized =
+        Math.tan(angle) /
+        Math.tan(halfFov);
+
+
+    /*
+     * Centro = 0.5
+     * Abajo = valores mayores.
+     */
+
+    return (
+        0.5 +
+        normalized *
+        0.5
+    );
+
+}
+
+
+/* =========================================
+   ALTURA DEL OBJETO EN PANTALLA
+========================================= */
+
+function targetScreenHeight(
+    distance
+) {
+
+    const fov =
+        degreesToRadians(
+            MEASUREMENT.verticalFov
+        );
+
+
+    const halfFov =
+        fov / 2;
+
+
+    const angular =
+        targetAngularSize(
+            distance
+        );
+
+
+    return (
+        Math.tan(
+            angular
+        ) /
+        Math.tan(
+            halfFov
+        )
+    );
+
+}
+
+
+/* =========================================
+   GENERAR ESCALA
+========================================= */
+
+function generarEscala() {
+
+    const left =
+        $("distanceScaleLeft");
+
+    const right =
+        $("distanceScaleRight");
+
+
+    if (
+        !left ||
+        !right
+    ) {
 
         return;
 
     }
 
 
-    distanceScale.innerHTML =
+    left.innerHTML =
+        "";
+
+    right.innerHTML =
         "";
 
 
-    DISTANCE_MARKS.forEach(
-        distancia => {
+    DISTANCES.forEach(
+        distance => {
 
-            const posicion =
-                obtenerPosicionMarca(
-                    distancia
+            const y =
+                distanceToScreenY(
+                    distance
                 );
 
 
-            /*
-             * Si la marca queda fuera
-             * de la pantalla, no se dibuja.
-             */
-
             if (
-                posicion < 0 ||
-                posicion > 1
+                y < 0 ||
+                y > 1
             ) {
 
                 return;
@@ -788,413 +1451,752 @@ function generarEscalaDistancia() {
             }
 
 
-            const mark =
-                document.createElement(
-                    "div"
-                );
+            createDistanceMark(
+                left,
+                distance,
+                y
+            );
 
 
-            mark.className =
-                "distance-mark";
+            createDistanceMark(
+                right,
+                distance,
+                y
+            );
+
+        }
+    );
+
+}
 
 
-            mark.dataset.distance =
-                distancia;
+/* =========================================
+   CREAR MARCA
+========================================= */
+
+function createDistanceMark(
+    container,
+    distance,
+    normalizedY
+) {
+
+    const mark =
+        document.createElement(
+            "div"
+        );
 
 
-            mark.style.top =
-                `${posicion * 100}%`;
+    mark.className =
+        "distance-mark";
+
+
+    mark.style.top =
+        (
+            normalizedY *
+            100
+        ) + "%";
+
+
+    const major =
+        distance %
+        10 ===
+        0;
+
+
+    mark.innerHTML = `
+
+        <span
+            class="distance-line
+            ${major ? "major" : ""}"
+        ></span>
+
+        <span
+            class="distance-label
+            ${major ? "major" : ""}"
+        >
+            ${distance}
+        </span>
+
+    `;
+
+
+    container.appendChild(
+        mark
+    );
+
+}
+
+
+/* =========================================
+   MEDICIÓN TANGENCIAL POR TOQUE
+========================================= */
+
+/*
+ * El usuario puede tocar una posición
+ * vertical dentro de la zona de retícula.
+ *
+ * Esa posición representa la BASE del
+ * objeto.
+ */
+
+$("reticleHUD")
+    .addEventListener(
+        "click",
+        event => {
+
+            if (!cross) {
+
+                return;
+
+            }
+
+
+            const y =
+                event.clientY /
+                window.innerHeight;
 
 
             /*
-             * Marcas mayores cada
-             * 10 metros.
+             * Solo tiene sentido medir
+             * debajo del horizonte.
              */
 
-            const esMayor =
-                distancia % 10 === 0;
+            if (
+                y <= 0.5
+            ) {
+
+                return;
+
+            }
 
 
-            mark.innerHTML = `
-
-                <span
-                    class="distance-line
-                    ${esMayor
-                        ? "major"
-                        : ""}"
-                ></span>
-
-                <span
-                    class="distance-label
-                    ${esMayor
-                        ? "major"
-                        : ""}"
-                >
-                    ${distancia}
-                </span>
-
-            `;
+            const fov =
+                degreesToRadians(
+                    MEASUREMENT.verticalFov
+                );
 
 
-            distanceScale.appendChild(
-                mark
+            const normalized =
+                (
+                    y -
+                    0.5
+                ) * 2;
+
+
+            const angle =
+                Math.atan(
+                    normalized *
+                    Math.tan(
+                        fov / 2
+                    )
+                );
+
+
+            const distance =
+                angleToDistance(
+                    angle
+                );
+
+
+            if (
+                distance <
+                MEASUREMENT.minDistance
+            ) {
+
+                setDistance(
+                    MEASUREMENT.minDistance
+                );
+
+                return;
+
+            }
+
+
+            if (
+                distance >
+                MEASUREMENT.maxDistance
+            ) {
+
+                setDistanceText(
+                    ">100 M"
+                );
+
+                return;
+
+            }
+
+
+            setDistance(
+                distance
             );
 
         }
+    );
+
+
+/* =========================================
+   MOSTRAR DISTANCIA
+========================================= */
+
+function setDistance(
+    distance
+) {
+
+    if (
+        !Number.isFinite(
+            distance
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    setDistanceText(
+        Math.round(
+            distance
+        ) + " M"
     );
 
 }
 
 
 /* =========================================
-   ACTUALIZAR HUD
+   TEXTO DISTANCIA
 ========================================= */
 
-function actualizarHudDistancia(
-    distancia
+function setDistanceText(
+    text
 ) {
 
-    if (!distanceHud) {
+    const hud =
+        $("distanceHud");
+
+
+    if (!hud) {
 
         return;
 
     }
 
 
-    if (
-        !isFinite(distancia)
-    ) {
-
-        distanceHud.textContent =
-            "DIST: -- m";
-
-        return;
-
-    }
-
-
-    if (
-        distancia >
-        DISTANCE_CONFIG.maxDistance
-    ) {
-
-        distanceHud.textContent =
-            "DIST: >100 m";
-
-        return;
-
-    }
-
-
-    distanceHud.textContent =
-        `DIST: ${Math.round(distancia)} m`;
+    hud.textContent =
+        "DIST: " +
+        text;
 
 }
 
 
 /* =========================================
-   CÁLCULO DESDE POSICIÓN
+   BOTÓN INICIO
 ========================================= */
 
-/*
- * Esta función convierte la posición
- * vertical de un punto seleccionado
- * en distancia.
- *
- * Actualmente la escala funciona
- * visualmente sin necesidad de tocar
- * la pantalla.
- */
+if ($("startBtn")) {
 
-function calcularDistanciaPorPosicion(
-    posicionNormalizada
-) {
-
-    /*
-     * Distancia respecto al centro
-     * óptico.
-     */
-
-    const diferencia =
-        posicionNormalizada -
-        0.5;
-
-
-    if (
-        diferencia <= 0
-    ) {
-
-        return Infinity;
-
-    }
-
-
-    const fov =
-        gradosARadianes(
-            obtenerFovVertical()
-        );
-
-
-    const medioFov =
-        fov / 2;
-
-
-    /*
-     * Ángulo hacia abajo.
-     */
-
-    const tangente =
-        (
-            diferencia * 2
-        ) *
-        Math.tan(
-            medioFov
-        );
-
-
-    const angulo =
-        Math.atan(
-            tangente
-        );
-
-
-    return calcularDistanciaDesdeAngulo(
-        angulo
-    );
+    $("startBtn")
+        .onclick =
+        startCamera;
 
 }
 
 
 /* =========================================
-   BOTÓN CÁMARA
+   MENÚ
 ========================================= */
 
-cameraButton.addEventListener(
-    "click",
-    async () => {
+if ($("menuBtn")) {
 
-        if (stream) {
+    $("menuBtn")
+        .onclick =
+        () => {
 
-            detenerCamara();
+            $("controls")
+                .classList
+                .remove(
+                    "hidden"
+                );
 
+        };
 
-            cameraStatus.textContent =
-                "PAUSADA";
-
-
-            loading.classList.remove(
-                "hidden"
-            );
-
-
-            loading
-                .querySelector(
-                    ".loading-text"
-                )
-                .textContent =
-                "Cámara detenida";
-
-
-        } else {
-
-            loading.classList.remove(
-                "hidden"
-            );
-
-
-            loading
-                .querySelector(
-                    ".loading-text"
-                )
-                .textContent =
-                "Iniciando cámara...";
-
-
-            await iniciarCamara();
-
-        }
-
-    }
-);
+}
 
 
 /* =========================================
-   VISIÓN NOCTURNA
+   CERRAR MENÚ
 ========================================= */
 
-nightButton.addEventListener(
-    "click",
-    () => {
+if ($("closeBtn")) {
 
-        nightVisionEnabled =
-            !nightVisionEnabled;
+    $("closeBtn")
+        .onclick =
+        () => {
 
+            $("controls")
+                .classList
+                .add(
+                    "hidden"
+                );
 
-        nightButton.classList.toggle(
-            "active",
-            nightVisionEnabled
-        );
+        };
 
-    }
-);
+}
 
 
 /* =========================================
-   RETÍCULA
+   SLIDERS
 ========================================= */
 
-reticleButton.addEventListener(
-    "click",
-    () => {
+[
+    "brightness",
+    "contrast",
+    "gain",
+    "zoom"
 
-        reticleEnabled =
-            !reticleEnabled;
+].forEach(
+    id => {
 
-
-        reticle.classList.toggle(
-            "hidden",
-            !reticleEnabled
-        );
-
-
-        reticleButton.classList.toggle(
-            "active",
-            reticleEnabled
-        );
+        const control =
+            $(id);
 
 
-        if (
-            reticleEnabled
-        ) {
-
-            generarEscalaDistancia();
-
-
-            distanceHud.textContent =
-                "DIST: -- m";
-
-
-            distanceInstruction
-                .textContent =
-                "BASE DEL OBJETO";
-
-        }
-
-    }
-);
-
-
-/* =========================================
-   INTERACCIÓN CON LA RETÍCULA
-========================================= */
-
-/*
- * Al tocar la pantalla sobre la retícula,
- * se puede seleccionar la posición de la
- * base del objeto.
- *
- * Esto permite que el cálculo sea real:
- *
- * cámara = 1.65 m
- * ↓
- * ángulo hacia la base
- * ↓
- * distancia.
- */
-
-reticle.addEventListener(
-    "click",
-    event => {
-
-        if (!reticleEnabled) {
+        if (!control) {
 
             return;
 
         }
 
 
-        const rect =
-            reticle.getBoundingClientRect();
+        control.oninput =
+            () => {
+
+                state[id] =
+                    Number(
+                        control.value
+                    );
 
 
-        const y =
-            event.clientY -
-            rect.top;
+                const output =
+                    $(
+                        id +
+                        "Out"
+                    );
 
 
-        const posicion =
-            y /
-            rect.height;
+                if (output) {
+
+                    if (
+                        id ===
+                        "zoom"
+                    ) {
+
+                        output.textContent =
+                            state[id]
+                                .toFixed(1)
+                            +
+                            "×";
+
+                    } else {
+
+                        output.textContent =
+                            state[id]
+                                .toFixed(2);
+
+                    }
+
+                }
 
 
-        const distancia =
-            calcularDistanciaPorPosicion(
-                posicion
-            );
+                saveState();
 
-
-        actualizarHudDistancia(
-            distancia
-        );
+            };
 
     }
 );
 
 
 /* =========================================
-   CAMBIAR CÁMARA
+   ACCIONES
 ========================================= */
 
-switchButton.addEventListener(
-    "click",
+document
+    .querySelectorAll(
+        "[data-action]"
+    )
+    .forEach(
+        button => {
+
+            button.onclick =
+                async () => {
+
+                    const action =
+                        button
+                            .dataset
+                            .action;
+
+
+                    /* =========================
+                       MODOS
+                    ========================= */
+
+                    if (
+                        action ===
+                        "mode"
+                    ) {
+
+                        mode =
+                            (
+                                mode +
+                                1
+                            ) % 3;
+
+
+                        const labels = [
+
+                            "MODO: VERDE",
+
+                            "MODO: B/N",
+
+                            "MODO: TÉRMICO"
+
+                        ];
+
+
+                        button
+                            .textContent =
+                            labels[
+                                mode
+                            ];
+
+
+                        if (
+                            $("modeLabel")
+                        ) {
+
+                            $("modeLabel")
+                                .textContent =
+                                labels[
+                                    mode
+                                ]
+                                .replace(
+                                    "MODO: ",
+                                    ""
+                                );
+
+                        }
+
+                    }
+
+
+                    /* =========================
+                       VR
+                    ========================= */
+
+                    if (
+                        action ===
+                        "vr"
+                    ) {
+
+                        vr =
+                            !vr;
+
+
+                        document
+                            .body
+                            .classList
+                            .toggle(
+                                "vr-mode",
+                                vr
+                            );
+
+
+                        button
+                            .textContent =
+                            "VR: " +
+                            (
+                                vr
+                                    ? "ON"
+                                    : "OFF"
+                            );
+
+
+                        if (
+                            $("vrLabel")
+                        ) {
+
+                            $("vrLabel")
+                                .textContent =
+                                "VR " +
+                                (
+                                    vr
+                                        ? "ON"
+                                        : "OFF"
+                                );
+
+                        }
+
+                    }
+
+
+                    /* =========================
+                       RETÍCULA
+                    ========================= */
+
+                    if (
+                        action ===
+                        "crosshair"
+                    ) {
+
+                        cross =
+                            !cross;
+
+
+                        $("reticleHUD")
+                            .style
+                            .display =
+                            cross
+                                ? ""
+                                : "none";
+
+
+                        button
+                            .textContent =
+                            "RETÍCULA: " +
+                            (
+                                cross
+                                    ? "ON"
+                                    : "OFF"
+                            );
+
+                    }
+
+
+                    /* =========================
+                       ESPEJO
+                    ========================= */
+
+                    if (
+                        action ===
+                        "mirror"
+                    ) {
+
+                        mirror =
+                            !mirror;
+
+
+                        button
+                            .textContent =
+                            "ESPEJO: " +
+                            (
+                                mirror
+                                    ? "ON"
+                                    : "OFF"
+                            );
+
+                    }
+
+
+                    /* =========================
+                       PANTALLA COMPLETA
+                    ========================= */
+
+                    if (
+                        action ===
+                        "fullscreen"
+                    ) {
+
+                        try {
+
+                            if (
+                                document
+                                    .fullscreenElement
+                            ) {
+
+                                await document
+                                    .exitFullscreen();
+
+                            } else {
+
+                                await document
+                                    .documentElement
+                                    .requestFullscreen();
+
+                            }
+
+                        } catch (
+                            error
+                        ) {
+
+                            console.warn(
+                                "Fullscreen:",
+                                error
+                            );
+
+                        }
+
+                    }
+
+
+                    /* =========================
+                       LINTERNA
+                    ========================= */
+
+                    if (
+                        action ===
+                        "torch"
+                    ) {
+
+                        if (!track) {
+
+                            alert(
+                                "La cámara no está activa."
+                            );
+
+                            return;
+
+                        }
+
+
+                        try {
+
+                            const capabilities =
+                                track
+                                    .getCapabilities?.();
+
+
+                            if (
+                                capabilities &&
+                                capabilities.torch
+                            ) {
+
+                                torch =
+                                    !torch;
+
+
+                                await track
+                                    .applyConstraints({
+
+                                        advanced: [
+
+                                            {
+                                                torch:
+                                                    torch
+                                            }
+
+                                        ]
+
+                                    });
+
+
+                                button
+                                    .textContent =
+                                    "LINTERNA: " +
+                                    (
+                                        torch
+                                            ? "ON"
+                                            : "OFF"
+                                    );
+
+                            } else {
+
+                                alert(
+                                    "Este iPhone/navegador no expone control de linterna mediante la cámara web."
+                                );
+
+                            }
+
+                        } catch (
+                            error
+                        ) {
+
+                            console.warn(
+                                "Linterna:",
+                                error
+                            );
+
+                        }
+
+                    }
+
+                };
+
+        }
+    );
+
+
+/* =========================================
+   RESTABLECER
+========================================= */
+
+if ($("resetBtn")) {
+
+    $("resetBtn")
+        .onclick =
+        () => {
+
+            state.brightness =
+                1.20;
+
+            state.contrast =
+                1.35;
+
+            state.gain =
+                1.00;
+
+            state.zoom =
+                0.8;
+
+
+            saveState();
+
+            updateControls();
+
+        };
+
+}
+
+
+/* =========================================
+   DOBLE TOQUE
+========================================= */
+
+document.addEventListener(
+    "dblclick",
     async () => {
 
-        cameraFacing =
-            cameraFacing ===
-            "environment"
+        try {
 
-                ? "user"
+            if (
+                !document
+                    .fullscreenElement
+            ) {
 
-                : "environment";
+                await document
+                    .documentElement
+                    .requestFullscreen();
 
+            }
 
-        loading.classList.remove(
-            "hidden"
-        );
+        } catch (
+            error
+        ) {
 
-
-        loading
-            .querySelector(
-                ".loading-text"
-            )
-            .textContent =
-            "Cambiando cámara...";
-
-
-        await iniciarCamara();
-
-    }
-);
-
-
-/* =========================================
-   LIMPIEZA
-========================================= */
-
-window.addEventListener(
-    "beforeunload",
-    () => {
-
-        detenerCamara();
-
-
-        if (animationFrame) {
-
-            cancelAnimationFrame(
-                animationFrame
+            console.warn(
+                "Fullscreen:",
+                error
             );
 
         }
 
     }
+);
+
+
+/* =========================================
+   DETENER CÁMARA
+========================================= */
+
+window.addEventListener(
+    "pagehide",
+    stopCamera
 );
