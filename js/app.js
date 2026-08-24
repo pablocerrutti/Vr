@@ -1,16 +1,12 @@
-/* =========================================================
-   LONWOLF NIGHTVISION VR
-   V9
+/* 
+   LONEWOLF NIGHTVISION VR
+   V10
+   iPhone SE 2020 - FOV CALIBRATED
    ========================================================= */
 
-const video =
-  document.getElementById("camera");
-
-const canvas =
-  document.getElementById("view");
-
-const $ =
-  id => document.getElementById(id);
+const video = document.getElementById("camera");
+const canvas = document.getElementById("view");
+const $ = id => document.getElementById(id);
 
 
 /* =========================================================
@@ -19,7 +15,6 @@ const $ =
 
 let stream = null;
 let track = null;
-
 let raf = 0;
 
 let lastFrame = 0;
@@ -30,7 +25,6 @@ const TARGET_FPS = 30;
 const FRAME_TIME = 1000 / TARGET_FPS;
 
 let mode = 0;
-
 let vr = false;
 let reticle = true;
 let scale = true;
@@ -53,7 +47,58 @@ const state = {
 
 
 /* =========================================================
-   CARGAR CONFIGURACIÓN
+   FOV iPHONE SE 2020
+   ========================================================= */
+
+/*
+   Apple documenta aproximadamente 58.6° de FOV
+   para el modo de vídeo 16:9 del iPhone SE.
+
+   Convertido a 16:9:
+
+   Horizontal ≈ 52.16°
+   Vertical   ≈ 30.78°
+
+   Estos valores son la referencia inicial.
+
+   La escala se recalcula además según:
+   - orientación
+   - relación del canvas
+   - zoom
+   - modo VR
+*/
+
+const CAMERA_FOV_HORIZONTAL = 52.16;
+const CAMERA_FOV_VERTICAL = 30.78;
+
+
+/* =========================================================
+   OBJETIVO DE REFERENCIA
+   ========================================================= */
+
+const TARGET_WIDTH = 0.45;
+const TARGET_HEIGHT = 0.40;
+
+
+/* =========================================================
+   DISTANCIAS
+   ========================================================= */
+
+const RANGE_DISTANCES = [
+
+  20,
+  30,
+  40,
+  50,
+  60,
+  75,
+  100
+
+];
+
+
+/* =========================================================
+   CARGAR ESTADO
    ========================================================= */
 
 function loadState() {
@@ -62,7 +107,7 @@ function loadState() {
 
     const saved =
       localStorage.getItem(
-        "lonwolf-v9"
+        "lonwolf-v10"
       );
 
     if (saved) {
@@ -101,7 +146,7 @@ function saveState() {
   try {
 
     localStorage.setItem(
-      "lonwolf-v9",
+      "lonwolf-v10",
       JSON.stringify(state)
     );
 
@@ -148,7 +193,7 @@ if (!gl) {
 
 
 /* =========================================================
-   VERTEX SHADER
+   SHADERS
    ========================================================= */
 
 const vertexShaderSource = `
@@ -171,13 +216,8 @@ void main() {
     a_texCoord;
 
 }
-
 `;
 
-
-/* =========================================================
-   FRAGMENT SHADER
-   ========================================================= */
 
 const fragmentShaderSource = `
 
@@ -201,7 +241,6 @@ void main() {
 
   vec2 uv =
     v_texCoord;
-
 
   /*
      CORRECCIÓN VERTICAL
@@ -251,7 +290,9 @@ void main() {
       outputRatio /
       sourceRatio;
 
-  } else {
+  }
+
+  else {
 
     p.y *=
       sourceRatio /
@@ -263,7 +304,8 @@ void main() {
   /*
      ZOOM
 
-     0.8 mínimo
+     0.8 = campo ligeramente
+     más amplio que 1.0
   */
 
   p /=
@@ -286,7 +328,7 @@ void main() {
 
 
   /*
-     IMAGEN
+     CÁMARA
   */
 
   vec3 color =
@@ -416,8 +458,7 @@ void main() {
     else if (y < 0.40) {
 
       float t =
-        (y - 0.20) /
-        0.20;
+        (y - 0.20) / 0.20;
 
       r = t;
       g = 0.0;
@@ -428,8 +469,7 @@ void main() {
     else if (y < 0.60) {
 
       float t =
-        (y - 0.40) /
-        0.20;
+        (y - 0.40) / 0.20;
 
       r = 1.0;
       g = 0.0;
@@ -440,8 +480,7 @@ void main() {
     else if (y < 0.78) {
 
       float t =
-        (y - 0.60) /
-        0.18;
+        (y - 0.60) / 0.18;
 
       r = 1.0;
       g = t;
@@ -452,8 +491,7 @@ void main() {
     else {
 
       float t =
-        (y - 0.78) /
-        0.22;
+        (y - 0.78) / 0.22;
 
       r = 1.0;
       g = 1.0;
@@ -493,12 +531,11 @@ void main() {
     );
 
 }
-
 `;
 
 
 /* =========================================================
-   SHADER
+   COMPILAR SHADER
    ========================================================= */
 
 function compileShader(
@@ -533,7 +570,7 @@ function compileShader(
     );
 
     throw new Error(
-      "Error WebGL."
+      "Error compilando WebGL."
     );
 
   }
@@ -601,13 +638,13 @@ gl.bufferData(
 
   new Float32Array([
 
-    -1,-1,
-     1,-1,
-    -1, 1,
+    -1, -1,
+     1, -1,
+    -1,  1,
 
-    -1, 1,
-     1,-1,
-     1, 1
+    -1,  1,
+     1, -1,
+     1,  1
 
   ]),
 
@@ -639,7 +676,7 @@ gl.vertexAttribPointer(
 
 
 /* =========================================================
-   TEXTURA
+   COORDENADAS TEXTURA
    ========================================================= */
 
 const texCoordBuffer =
@@ -657,13 +694,13 @@ gl.bufferData(
 
   new Float32Array([
 
-    0,0,
-    1,0,
-    0,1,
+    0, 0,
+    1, 0,
+    0, 1,
 
-    0,1,
-    1,0,
-    1,1
+    0, 1,
+    1, 0,
+    1, 1
 
   ]),
 
@@ -803,6 +840,514 @@ gl.uniform1i(
 
 
 /* =========================================================
+   CREAR ESCALA
+   ========================================================= */
+
+function createRangeScale(
+  container
+) {
+
+  if (!container)
+    return;
+
+
+  container.innerHTML = "";
+
+
+  const scale =
+    document.createElement(
+      "div"
+    );
+
+  scale.className =
+    "dynamic-range-scale";
+
+
+  RANGE_DISTANCES.forEach(
+    distance => {
+
+      const box =
+        document.createElement(
+          "div"
+        );
+
+
+      box.className =
+        "range-target";
+
+
+      box.dataset.distance =
+        distance;
+
+
+      const label =
+        document.createElement(
+          "span"
+        );
+
+
+      label.className =
+        "range-target-label";
+
+
+      label.textContent =
+        distance + " m";
+
+
+      box.appendChild(
+        label
+      );
+
+
+      scale.appendChild(
+        box
+      );
+
+    }
+  );
+
+
+  container.appendChild(
+    scale
+  );
+
+}
+
+
+createRangeScale(
+  document.getElementById(
+    "rangeScale"
+  )
+);
+
+
+document
+  .querySelectorAll(
+    ".vr-scale"
+  )
+  .forEach(
+    createRangeScale
+  );
+
+
+/* =========================================================
+   FOV EFECTIVO
+   ========================================================= */
+
+function getEffectiveFOV(
+  outputWidth,
+  outputHeight
+) {
+
+  if (
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+
+    return {
+
+      horizontal:
+        CAMERA_FOV_HORIZONTAL,
+
+      vertical:
+        CAMERA_FOV_VERTICAL
+
+    };
+
+  }
+
+
+  const sourceAspect =
+    video.videoWidth /
+    video.videoHeight;
+
+
+  const outputAspect =
+    outputWidth /
+    outputHeight;
+
+
+  let horizontal =
+    CAMERA_FOV_HORIZONTAL;
+
+  let vertical =
+    CAMERA_FOV_VERTICAL;
+
+
+  /*
+     El shader utiliza COVER.
+
+     Si la pantalla es más estrecha,
+     recortamos horizontalmente.
+
+     Si es más ancha,
+     recortamos verticalmente.
+  */
+
+  if (
+    sourceAspect >
+    outputAspect
+  ) {
+
+    const visibleHorizontal =
+      2 *
+      Math.atan(
+
+        Math.tan(
+          horizontal *
+          Math.PI /
+          180 /
+          2
+        ) *
+
+        (
+          outputAspect /
+          sourceAspect
+        )
+
+      ) *
+      180 /
+      Math.PI;
+
+
+    horizontal =
+      visibleHorizontal;
+
+  }
+
+  else if (
+    sourceAspect <
+    outputAspect
+  ) {
+
+    const visibleVertical =
+      2 *
+      Math.atan(
+
+        Math.tan(
+          vertical *
+          Math.PI /
+          180 /
+          2
+        ) *
+
+        (
+          sourceAspect /
+          outputAspect
+        )
+
+      ) *
+      180 /
+      Math.PI;
+
+
+    vertical =
+      visibleVertical;
+
+  }
+
+
+  /*
+     El zoom de la aplicación
+     modifica el FOV aparente.
+  */
+
+  const z =
+    Math.max(
+      0.8,
+      state.zoom
+    );
+
+
+  horizontal =
+    2 *
+    Math.atan(
+
+      Math.tan(
+        horizontal *
+        Math.PI /
+        180 /
+        2
+      ) / z
+
+    ) *
+    180 /
+    Math.PI;
+
+
+  vertical =
+    2 *
+    Math.atan(
+
+      Math.tan(
+        vertical *
+        Math.PI /
+        180 /
+        2
+      ) / z
+
+    ) *
+    180 /
+    Math.PI;
+
+
+  return {
+
+    horizontal,
+    vertical
+
+  };
+
+}
+
+
+/* =========================================================
+   ÁNGULO DE OBJETIVO
+   ========================================================= */
+
+function angularSize(
+  size,
+  distance
+) {
+
+  return (
+    2 *
+    Math.atan(
+      size /
+      (
+        2 *
+        distance
+      )
+    )
+  ) *
+  180 /
+  Math.PI;
+
+}
+
+
+/* =========================================================
+   TAMAÑO EN PÍXELES
+   ========================================================= */
+
+function pixelsForAngularSize(
+  angle,
+  fov,
+  pixels
+) {
+
+  return (
+
+    angle /
+    fov
+
+  ) *
+  pixels;
+
+}
+
+
+/* =========================================================
+   ACTUALIZAR ESCALA
+   ========================================================= */
+
+function updateRangeScale() {
+
+  if (!video.videoWidth)
+    return;
+
+
+  /*
+     ESCALA NORMAL
+  */
+
+  const normalContainer =
+    document.getElementById(
+      "rangeScale"
+    );
+
+
+  if (normalContainer) {
+
+    const width =
+      canvas.clientWidth;
+
+    const height =
+      canvas.clientHeight;
+
+
+    updateScaleContainer(
+      normalContainer,
+      width,
+      height
+    );
+
+  }
+
+
+  /*
+     ESCALAS VR
+  */
+
+  document
+    .querySelectorAll(
+      ".vr-scale"
+    )
+    .forEach(
+      container => {
+
+        const width =
+          canvas.clientWidth / 2;
+
+        const height =
+          canvas.clientHeight;
+
+
+        updateScaleContainer(
+          container,
+          width,
+          height
+        );
+
+      }
+    );
+
+}
+
+
+function updateScaleContainer(
+  container,
+  width,
+  height
+) {
+
+  const fov =
+    getEffectiveFOV(
+      width,
+      height
+    );
+
+
+  const elements =
+    container
+      .querySelectorAll(
+        ".range-target"
+      );
+
+
+  elements.forEach(
+    element => {
+
+      const distance =
+        Number(
+          element.dataset.distance
+        );
+
+
+      /*
+         ANCHO 45 CM
+      */
+
+      const angleWidth =
+        angularSize(
+          TARGET_WIDTH,
+          distance
+        );
+
+
+      /*
+         ALTO 40 CM
+      */
+
+      const angleHeight =
+        angularSize(
+          TARGET_HEIGHT,
+          distance
+        );
+
+
+      const boxWidth =
+        pixelsForAngularSize(
+          angleWidth,
+          fov.horizontal,
+          width
+        );
+
+
+      const boxHeight =
+        pixelsForAngularSize(
+          angleHeight,
+          fov.vertical,
+          height
+        );
+
+
+      /*
+         Limitamos el tamaño
+         para evitar cajas enormes.
+      */
+
+      const finalWidth =
+        Math.min(
+          width * 0.90,
+          Math.max(
+            8,
+            boxWidth
+          )
+        );
+
+
+      const finalHeight =
+        Math.min(
+          height * 0.90,
+          Math.max(
+            8,
+            boxHeight
+          )
+        );
+
+
+      element.style.width =
+        finalWidth + "px";
+
+
+      element.style.height =
+        finalHeight + "px";
+
+
+      /*
+         Todos centrados
+         sobre el punto de mira.
+      */
+
+      element.style.left =
+        "50%";
+
+
+      element.style.top =
+        "50%";
+
+
+      element.style.transform =
+        "translate(-50%, -50%)";
+
+
+      /*
+         Opacidad según distancia.
+      */
+
+      element.style.opacity =
+        distance >= 75
+          ? "0.55"
+          : "0.82";
+
+    }
+  );
+
+}
+
+
+/* =========================================================
    RESIZE
    ========================================================= */
 
@@ -817,13 +1362,15 @@ function resize() {
 
   canvas.width =
     Math.floor(
-      window.innerWidth * dpr
+      window.innerWidth *
+      dpr
     );
 
 
   canvas.height =
     Math.floor(
-      window.innerHeight * dpr
+      window.innerHeight *
+      dpr
     );
 
 
@@ -832,6 +1379,11 @@ function resize() {
     0,
     canvas.width,
     canvas.height
+  );
+
+
+  requestAnimationFrame(
+    updateRangeScale
   );
 
 }
@@ -916,13 +1468,17 @@ async function startCamera() {
         .applyConstraints({
 
           frameRate: {
+
             ideal: 30,
             max: 30
+
           }
 
         });
 
-    } catch (e) {}
+    }
+
+    catch (e) {}
 
 
     $("startPanel")
@@ -938,9 +1494,21 @@ async function startCamera() {
     fpsTime =
       performance.now();
 
+
     frames = 0;
 
     lastFrame = 0;
+
+
+    /*
+       Esperar a que el navegador
+       conozca dimensiones reales.
+    */
+
+    setTimeout(
+      updateRangeScale,
+      250
+    );
 
 
     cancelAnimationFrame(
@@ -953,14 +1521,16 @@ async function startCamera() {
         render
       );
 
+  }
 
-  } catch (e) {
+  catch (e) {
 
     console.error(e);
 
     $("status")
       .textContent =
       "ERROR";
+
 
     alert(
       e.message ||
@@ -973,7 +1543,7 @@ async function startCamera() {
 
 
 /* =========================================================
-   RENDER
+   DIBUJAR FRAME
    ========================================================= */
 
 function drawFrame() {
@@ -1152,6 +1722,10 @@ function drawFrame() {
 }
 
 
+/* =========================================================
+   RENDER 30 FPS
+   ========================================================= */
+
 function render(timestamp) {
 
   if (
@@ -1221,13 +1795,16 @@ function updateControls() {
     .textContent =
     state.brightness.toFixed(2);
 
+
   $("contrastOut")
     .textContent =
     state.contrast.toFixed(2);
 
+
   $("gainOut")
     .textContent =
     state.gain.toFixed(2);
+
 
   $("zoomOut")
     .textContent =
@@ -1243,39 +1820,43 @@ function updateControls() {
   "gain",
   "zoom"
 
-].forEach(id => {
+].forEach(
+  id => {
 
-  $(id).addEventListener(
-    "input",
-    () => {
+    $(id).addEventListener(
+      "input",
+      () => {
 
-      state[id] =
-        Number(
-          $(id).value
-        );
-
-
-      if (
-        id === "zoom"
-      ) {
-
-        state.zoom =
-          Math.max(
-            0.8,
-            state.zoom
+        state[id] =
+          Number(
+            $(id).value
           );
 
+
+        if (
+          id === "zoom"
+        ) {
+
+          state.zoom =
+            Math.max(
+              0.8,
+              state.zoom
+            );
+
+        }
+
+
+        updateControls();
+
+        saveState();
+
+        updateRangeScale();
+
       }
+    );
 
-
-      updateControls();
-
-      saveState();
-
-    }
-  );
-
-});
+  }
+);
 
 
 /* =========================================================
@@ -1288,6 +1869,7 @@ function updateReticle() {
     document.getElementById(
       "normalReticle"
     );
+
 
   const vrElement =
     document.getElementById(
@@ -1314,9 +1896,7 @@ function updateReticle() {
       "none";
 
     vrElement.style.display =
-      scale
-        ? "block"
-        : "block";
+      "block";
 
   }
 
@@ -1331,12 +1911,20 @@ function updateReticle() {
   }
 
 
-  document.getElementById(
-    "rangeScale"
-  ).style.display =
-    scale
-      ? "block"
-      : "none";
+  const range =
+    document.getElementById(
+      "rangeScale"
+    );
+
+
+  if (range) {
+
+    range.style.display =
+      scale
+        ? "block"
+        : "none";
+
+  }
 
 
   document
@@ -1353,6 +1941,9 @@ function updateReticle() {
 
       }
     );
+
+
+  updateRangeScale();
 
 }
 
@@ -1442,7 +2033,7 @@ function setMode() {
 
 
 /* =========================================================
-   ACCIONES
+   BOTONES
    ========================================================= */
 
 $("startBtn")
@@ -1497,8 +2088,6 @@ document
             button.dataset.action;
 
 
-          /* MODO */
-
           if (
             action === "mode"
           ) {
@@ -1507,8 +2096,6 @@ document
 
           }
 
-
-          /* VR */
 
           else if (
             action === "vr"
@@ -1550,8 +2137,6 @@ document
           }
 
 
-          /* RETÍCULA */
-
           else if (
             action === "reticle"
           ) {
@@ -1573,8 +2158,6 @@ document
 
           }
 
-
-          /* ESCALA */
 
           else if (
             action === "scale"
@@ -1598,8 +2181,6 @@ document
           }
 
 
-          /* ESPEJO */
-
           else if (
             action === "mirror"
           ) {
@@ -1619,8 +2200,6 @@ document
           }
 
 
-          /* FULLSCREEN */
-
           else if (
             action === "fullscreen"
           ) {
@@ -1631,12 +2210,12 @@ document
                 .documentElement
                 .requestFullscreen?.();
 
-            } catch (e) {}
+            }
+
+            catch (e) {}
 
           }
 
-
-          /* LINTERNA */
 
           else if (
             action === "torch"
@@ -1655,12 +2234,12 @@ document
 
             try {
 
-              const capabilities =
+              const caps =
                 track.getCapabilities?.();
 
 
               if (
-                capabilities?.torch
+                caps?.torch
               ) {
 
                 torch =
@@ -1673,8 +2252,7 @@ document
                     advanced: [
 
                       {
-                        torch:
-                          torch
+                        torch
                       }
 
                     ]
@@ -1700,7 +2278,9 @@ document
 
               }
 
-            } catch (e) {
+            }
+
+            catch (e) {
 
               console.warn(e);
 
@@ -1709,6 +2289,7 @@ document
           }
 
         }
+
       );
 
     }
@@ -1744,6 +2325,8 @@ $("resetBtn")
 
       updateControls();
 
+      updateRangeScale();
+
     }
   );
 
@@ -1759,6 +2342,7 @@ document.addEventListener(
     if (vr)
       return;
 
+
     document
       .documentElement
       .requestFullscreen?.();
@@ -1768,7 +2352,7 @@ document.addEventListener(
 
 
 /* =========================================================
-   PAGE HIDE
+   CIERRE
    ========================================================= */
 
 window.addEventListener(
@@ -1778,8 +2362,8 @@ window.addEventListener(
     stream
       ?.getTracks()
       .forEach(
-        track =>
-          track.stop()
+        t =>
+          t.stop()
       );
 
   }
