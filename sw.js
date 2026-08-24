@@ -1,33 +1,24 @@
-const CACHE =
-  "nightvision-v9";
-
+const CACHE = "nightvision-v10";
 
 const ASSETS = [
-
   "./",
   "./index.html",
   "./css/style.css",
   "./js/app.js",
   "./manifest.json"
-
 ];
-
 
 self.addEventListener(
   "install",
   event => {
 
     event.waitUntil(
-
       caches
         .open(CACHE)
         .then(
           cache =>
-            cache.addAll(
-              ASSETS
-            )
+            cache.addAll(ASSETS)
         )
-
     );
 
     self.skipWaiting();
@@ -82,11 +73,8 @@ self.addEventListener(
         .then(
           cached => {
 
-            if (cached) {
-
+            if (cached)
               return cached;
-
-            }
 
 
             return fetch(
