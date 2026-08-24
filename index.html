@@ -59,21 +59,19 @@
     autoplay
     muted
     playsinline
-    webkit-playsinline
   ></video>
 
 
   <!-- =========================================
-       VISOR WEBGL
+       RENDER WEBGL
        ========================================= -->
 
-  <canvas
-    id="view"
-  ></canvas>
+  <canvas id="view"></canvas>
 
 
   <!-- =========================================
-       RETÍCULA
+       RETÍCULAS
+       En VR hay una por cada ojo
        ========================================= -->
 
   <div
@@ -81,8 +79,20 @@
     aria-hidden="true"
   >
 
-    <span></span>
-    <i></i>
+    <div class="crosshair-eye left">
+
+      <span></span>
+      <i></i>
+
+    </div>
+
+
+    <div class="crosshair-eye right">
+
+      <span></span>
+      <i></i>
+
+    </div>
 
   </div>
 
@@ -109,7 +119,7 @@
     <div class="hud-bottom">
 
       <span id="modeLabel">
-        LONEWOLF NIGHT VISION
+        NIGHT VISION
       </span>
 
       <span id="vrLabel">
@@ -117,6 +127,44 @@
       </span>
 
     </div>
+
+
+    <!-- =======================================
+         INFORMACIÓN DE MEDICIÓN
+         ======================================= -->
+
+    <div
+      id="distanceHud"
+      class="distance-hud hidden"
+    >
+
+      <div class="distance-title">
+        DISTANCIA
+      </div>
+
+      <div
+        id="distanceValue"
+        class="distance-value"
+      >
+        --.- m
+      </div>
+
+      <div
+        id="angleValue"
+        class="distance-info"
+      >
+        ÁNGULO --.-°
+      </div>
+
+      <div
+        id="heightValue"
+        class="distance-info"
+      >
+        ALTURA 1.65 m
+      </div>
+
+    </div>
+
 
   </div>
 
@@ -131,11 +179,14 @@
   >
 
     <div class="brand">
-      NIGHT<span>VISION</span>
+      LONWOLF
+      <span>NIGHTVISION</span>
     </div>
 
     <p>
-      Visor nocturno digital para teléfono + VR Box
+      VISOR NOCTURNO DIGITAL
+      <br>
+      TELÉFONO + VR BOX
     </p>
 
     <button id="startBtn">
@@ -143,9 +194,9 @@
     </button>
 
     <small>
-      La cámara requiere HTTPS o localhost.
-      La aplicación puede funcionar offline
-      una vez instalada.
+      La cámara requiere HTTPS.
+      Los sensores de movimiento pueden
+      solicitar autorización.
     </small>
 
   </section>
@@ -176,7 +227,7 @@
     <header>
 
       <strong>
-        CONTROLES
+        LONWOLF // CONTROLES
       </strong>
 
       <button
@@ -277,7 +328,29 @@
     </label>
 
 
-    <!-- BOTONES -->
+    <!-- ALTURA -->
+
+    <label>
+
+      Altura de visión
+
+      <output id="heightOut">
+        1.65 m
+      </output>
+
+      <input
+        id="height"
+        type="range"
+        min="0.5"
+        max="2.5"
+        step="0.01"
+        value="1.65"
+      >
+
+    </label>
+
+
+    <!-- ACCIONES -->
 
     <div class="grid">
 
@@ -295,6 +368,18 @@
 
       <button data-action="mirror">
         ESPEJO: OFF
+      </button>
+
+      <button data-action="measure">
+        MEDIR DISTANCIA
+      </button>
+
+      <button data-action="calibrate">
+        CALIBRAR HORIZONTAL
+      </button>
+
+      <button data-action="sensors">
+        ACTIVAR SENSORES
       </button>
 
       <button data-action="torch">
@@ -318,24 +403,31 @@
 
     <p class="warning">
 
-      Nota: el procesamiento mejora una imagen
-      con poca luz, pero no crea visión infrarroja
-      real. La linterna depende del hardware
-      del teléfono.
+      La medición es una estimación geométrica.
+      Supone que el punto apuntado está al nivel
+      del suelo. No sustituye un telémetro.
 
     </p>
 
   </aside>
 
 
+  <!-- =========================================
+       BOTÓN MEDIR PARA VR
+       ========================================= -->
+
+  <button
+    id="measureVrBtn"
+    class="measure-vr"
+  >
+    MEDIR
+  </button>
+
+
 </main>
 
 
-<!-- =========================================
-     APP
-     ========================================= -->
-
-<script src="js/app.js?v=5"></script>
+<script src="js/app.js"></script>
 
 </body>
 
