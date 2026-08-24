@@ -1,30 +1,13 @@
-/* =========================================================
-   LONWOLF NIGHTVISION VR
-   SERVICE WORKER V5
-   ========================================================= */
-
-const CACHE =
-  "nightvision-vr-v5";
-
+const CACHE = "nightvision-v8";
 
 const ASSETS = [
-
   "./",
-
   "./index.html",
-
   "./css/style.css",
-
-  "./js/app.js?v=5",
-
+  "./js/app.js",
   "./manifest.json"
-
 ];
 
-
-/* =========================================================
-   INSTALL
-   ========================================================= */
 
 self.addEventListener(
   "install",
@@ -34,28 +17,18 @@ self.addEventListener(
 
       caches
         .open(CACHE)
-
         .then(
           cache =>
-            cache.addAll(
-              ASSETS
-            )
-        )
-
-        .then(
-          () =>
-            self.skipWaiting()
+            cache.addAll(ASSETS)
         )
 
     );
 
+    self.skipWaiting();
+
   }
 );
 
-
-/* =========================================================
-   ACTIVATE
-   ========================================================= */
 
 self.addEventListener(
   "activate",
@@ -65,103 +38,78 @@ self.addEventListener(
 
       caches
         .keys()
-
         .then(
           keys =>
-
             Promise.all(
 
               keys
-
                 .filter(
                   key =>
                     key !== CACHE
                 )
-
                 .map(
                   key =>
-                    caches.delete(
-                      key
-                    )
+                    caches.delete(key)
                 )
 
             )
-
-        )
-
-        .then(
-          () =>
-            self.clients.claim()
         )
 
     );
+
+    self.clients.claim();
 
   }
 );
 
 
-/* =========================================================
-   FETCH
-   ========================================================= */
-
 self.addEventListener(
   "fetch",
   event => {
 
-    if (
-      event.request.method !==
-      "GET"
-    ) {
-
-      return;
-
-    }
-
-
     event.respondWith(
 
-      fetch(
-        event.request
-      )
-
+      caches
+        .match(event.request)
         .then(
-          response => {
+          cached => {
 
-            /*
-               Guardar la versión
-               nueva.
-            */
+            if (cached) {
 
-            const copy =
-              response.clone();
+              return cached;
+
+            }
 
 
-            caches
-              .open(CACHE)
-              .then(
-                cache => {
-
-                  cache.put(
-                    event.request,
-                    copy
-                  );
-
-                }
-              );
-
-
-            return response;
-
-          }
-        )
-
-        .catch(
-          () =>
-
-            caches.match(
+            return fetch(
               event.request
             )
+              .then(response => {
 
+                const copy =
+                  response.clone();
+
+                caches
+                  .open(CACHE)
+                  .then(
+                    cache =>
+                      cache.put(
+                        event.request,
+                        copy
+                      )
+                  );
+
+                return response;
+
+              })
+              .catch(
+                () =>
+                  caches.match(
+                    "./index.html"
+                  )
+              );
+
+          }
         )
 
     );
