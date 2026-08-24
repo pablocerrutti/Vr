@@ -1,5 +1,117 @@
-const CACHE="nightvision-vr-v1";
-const ASSETS=["./","./index.html","./css/style.css","./js/app.js","./manifest.json"];
-self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
-self.addEventListener("fetch",e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return res}).catch(()=>caches.match("./index.html")))));
+const CACHE = "nightvision-vr-v2";
+
+const ASSETS = [
+  "./",
+  "./index.html",
+  "./css/style.css",
+  "./js/app.js",
+  "./manifest.json"
+];
+
+
+/* =========================================
+   INSTALAR NUEVA VERSIÓN
+   ========================================= */
+
+self.addEventListener("install", event => {
+
+  event.waitUntil(
+
+    caches
+      .open(CACHE)
+      .then(cache => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+
+  );
+
+});
+
+
+/* =========================================
+   ACTIVAR NUEVA VERSIÓN
+   ========================================= */
+
+self.addEventListener("activate", event => {
+
+  event.waitUntil(
+
+    caches
+      .keys()
+      .then(keys => {
+
+        return Promise.all(
+
+          keys
+            .filter(key => key !== CACHE)
+            .map(key => caches.delete(key))
+
+        );
+
+      })
+      .then(() => self.clients.claim())
+
+  );
+
+});
+
+
+/* =========================================
+   SOLICITUDES
+   ========================================= */
+
+self.addEventListener("fetch", event => {
+
+  /*
+  Solo manejar solicitudes GET
+  */
+
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+
+  event.respondWith(
+
+    fetch(event.request)
+
+      .then(response => {
+
+        /*
+        Guardar la versión nueva en caché
+        */
+
+        const copy =
+          response.clone();
+
+        caches
+          .open(CACHE)
+          .then(cache => {
+
+            cache.put(
+              event.request,
+              copy
+            );
+
+          });
+
+
+        return response;
+
+      })
+
+      .catch(() => {
+
+        /*
+        Si estamos offline,
+        utilizar la versión almacenada
+        */
+
+        return caches.match(
+          event.request
+        );
+
+      })
+
+  );
+
+});
