@@ -1,22 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 
 <head>
 
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
 
     <meta
         name="viewport"
-        content="width=device-width,
-                 initial-scale=1.0,
-                 maximum-scale=1.0,
-                 user-scalable=no,
-                 viewport-fit=cover"
+        content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
     >
 
     <meta
         name="theme-color"
-        content="#000000"
+        content="#050805"
+    >
+
+    <meta
+        name="mobile-web-app-capable"
+        content="yes"
     >
 
     <meta
@@ -29,15 +30,7 @@
         content="black-translucent"
     >
 
-    <meta
-        name="apple-mobile-web-app-title"
-        content="Night Vision"
-    >
-
-    <meta
-        name="mobile-web-app-capable"
-        content="yes"
-    >
+    <title>LONEWOLF NIGHTVISION VR</title>
 
     <link
         rel="manifest"
@@ -49,291 +42,495 @@
         href="./style.css"
     >
 
-    <title>Night Vision</title>
-
 </head>
 
 
 <body>
 
-    <div id="app">
-
-        <!-- =================================
-             CÁMARA
-        ================================== -->
-
-        <video
-            id="camera"
-            autoplay
-            playsinline
-            muted
-        ></video>
+<main id="app">
 
 
-        <!-- =================================
-             PROCESAMIENTO DE IMAGEN
-        ================================== -->
+    <!-- =========================================
+         CÁMARA REAL
+    ========================================== -->
 
-        <canvas
-            id="nightCanvas"
-        ></canvas>
+    <video
+        id="camera"
+        autoplay
+        muted
+        playsinline
+    ></video>
 
 
-        <!-- =================================
-             RETÍCULA
-        ================================== -->
+    <!-- =========================================
+         CANVAS DE PROCESAMIENTO
+    ========================================== -->
+
+    <canvas
+        id="view"
+    ></canvas>
+
+
+    <!-- =========================================
+         HUD / RETÍCULA
+    ========================================== -->
+
+    <div
+        id="reticleHUD"
+        class="reticle-hud"
+    >
+
+        <!-- Centro -->
+
+        <div class="center-cross">
+
+            <span class="cross-horizontal"></span>
+
+            <span class="cross-vertical"></span>
+
+            <span class="cross-center"></span>
+
+        </div>
+
+
+        <!-- =====================================
+             ESCALA IZQUIERDA
+        ====================================== -->
 
         <div
-            id="reticle"
-            class="reticle hidden"
+            id="distanceScaleLeft"
+            class="distance-scale left-scale"
+        ></div>
+
+
+        <!-- =====================================
+             ESCALA DERECHA
+        ====================================== -->
+
+        <div
+            id="distanceScaleRight"
+            class="distance-scale right-scale"
+        ></div>
+
+
+        <!-- =====================================
+             REFERENCIA 50 x 50
+        ====================================== -->
+
+        <div
+            id="targetReference"
+            class="target-reference"
         >
 
-            <!-- Línea horizontal principal -->
+            <span class="target-top"></span>
 
-            <div
-                class="reticle-horizontal"
-            ></div>
+            <span class="target-bottom"></span>
 
+            <span class="target-left"></span>
 
-            <!-- Línea vertical principal -->
-
-            <div
-                class="reticle-vertical"
-            ></div>
+            <span class="target-right"></span>
 
 
-            <!-- Centro -->
-
-            <div
-                class="reticle-center"
-            ></div>
-
-
-            <!-- =================================
-                 ESCALA DE DISTANCIA
-            ================================== -->
-
-            <div
-                id="distanceScale"
-                class="distance-scale"
-            ></div>
-
-
-            <!-- =================================
-                 REFERENCIA CENTRAL
-            ================================== -->
-
-            <div
-                class="reference-center"
-            >
-
-                <span
-                    class="reference-horizontal"
-                ></span>
-
-                <span
-                    class="reference-vertical"
-                ></span>
-
-            </div>
-
-
-            <!-- =================================
-                 REFERENCIA 170 x 45 CM
-            ================================== -->
-
-            <div
-                class="target-reference"
-            >
-
-                <span
-                    class="target-reference-top"
-                ></span>
-
-                <span
-                    class="target-reference-side"
-                ></span>
-
-                <span
-                    class="target-reference-bottom"
-                ></span>
-
-                <span
-                    class="target-reference-label"
-                >
-                    170 × 45
-                </span>
-
-            </div>
-
-
-            <!-- =================================
-                 INDICADOR DE USO
-            ================================== -->
-
-            <div
-                id="distanceInstruction"
-                class="distance-instruction"
-            >
-                BASE DEL OBJETO
-            </div>
-
-
-            <!-- =================================
-                 HUD DISTANCIA
-            ================================== -->
-
-            <div
-                id="distanceHud"
-                class="distance-hud"
-            >
-                DIST: -- m
-            </div>
+            <span class="target-label">
+                50 × 50 CM
+            </span>
 
         </div>
 
 
-        <!-- =================================
-             INFORMACIÓN
-        ================================== -->
+        <!-- =====================================
+             HUD DE DISTANCIA
+        ====================================== -->
 
-        <div id="hud">
-
-            <div id="hudTop">
-
-                <span id="appTitle">
-                    NIGHT VISION
-                </span>
-
-                <span id="cameraStatus">
-                    OFFLINE
-                </span>
-
-            </div>
-
-
-            <div id="loading">
-
-                <div class="loading-title">
-                    NIGHT VISION
-                </div>
-
-                <div class="loading-text">
-                    Iniciando cámara...
-                </div>
-
-            </div>
-
+        <div
+            id="distanceHud"
+            class="distance-hud"
+        >
+            DIST: --
         </div>
 
 
-        <!-- =================================
-             CONTROLES
-        ================================== -->
-
-        <div id="controls">
-
-            <button
-                id="cameraButton"
-                class="control-button"
-                type="button"
-            >
-                CÁMARA
-            </button>
-
-
-            <button
-                id="nightButton"
-                class="control-button active"
-                type="button"
-            >
-                NV
-            </button>
-
-
-            <button
-                id="reticleButton"
-                class="control-button"
-                type="button"
-            >
-                RETÍCULA
-            </button>
-
-
-            <button
-                id="switchButton"
-                class="control-button small"
-                type="button"
-            >
-                ↻
-            </button>
-
-        </div>
-
-
-        <!-- =================================
-             VERSIÓN
-        ================================== -->
-
-        <div id="version">
-            V1.1.0
+        <div
+            id="measurementHelp"
+            class="measurement-help"
+        >
+            REFERENCIA 50×50 CM
         </div>
 
     </div>
 
 
-    <!-- =====================================
-         JAVASCRIPT PRINCIPAL
-    ====================================== -->
+    <!-- =========================================
+         HUD SUPERIOR
+    ========================================== -->
 
-    <script src="./app.js"></script>
+    <div
+        id="hud"
+        class="hud"
+    >
 
+        <div class="hud-top">
 
-    <!-- =====================================
-         SERVICE WORKER
-    ====================================== -->
+            <span id="status">
+                CÁMARA OFFLINE
+            </span>
 
-    <script>
+            <span id="fps">
+                0 FPS
+            </span>
 
-        if ("serviceWorker" in navigator) {
-
-            navigator.serviceWorker
-                .register("./sw.js")
-                .then(registration => {
-
-                    console.log(
-                        "Service Worker activo"
-                    );
-
-                    setInterval(() => {
-
-                        registration.update();
-
-                    }, 60000);
-
-                })
-                .catch(error => {
-
-                    console.error(
-                        "Service Worker:",
-                        error
-                    );
-
-                });
+        </div>
 
 
-            navigator.serviceWorker.addEventListener(
-                "controllerchange",
-                () => {
+        <div class="hud-bottom">
 
-                    window.location.reload();
+            <span id="modeLabel">
+                VERDE
+            </span>
 
-                }
-            );
+            <span id="vrLabel">
+                VR OFF
+            </span>
 
-        }
+        </div>
 
-    </script>
+    </div>
+
+
+    <!-- =========================================
+         PANEL DE INICIO
+    ========================================== -->
+
+    <section
+        id="startPanel"
+        class="panel"
+    >
+
+        <div class="brand">
+            LONEWOLF
+            <span>NIGHTVISION</span>
+        </div>
+
+
+        <p>
+            Visor nocturno digital
+            para teléfono + VR Box
+        </p>
+
+
+        <button
+            id="startBtn"
+            class="primary-button"
+        >
+            ACTIVAR CÁMARA
+        </button>
+
+
+        <small>
+
+            Cámara trasera.
+            Orientación horizontal.
+            Compatible con VR Box.
+
+        </small>
+
+    </section>
+
+
+    <!-- =========================================
+         BOTÓN MENÚ
+    ========================================== -->
+
+    <button
+        id="menuBtn"
+        class="round-button"
+        aria-label="Controles"
+    >
+        ☰
+    </button>
+
+
+    <!-- =========================================
+         PANEL DE CONTROLES
+    ========================================== -->
+
+    <aside
+        id="controls"
+        class="controls hidden"
+    >
+
+        <header>
+
+            <strong>
+                CONTROLES
+            </strong>
+
+
+            <button
+                id="closeBtn"
+                class="close-button"
+            >
+                ×
+            </button>
+
+        </header>
+
+
+        <!-- =====================================
+             BRILLO
+        ====================================== -->
+
+        <label>
+
+            <span>
+                Brillo
+            </span>
+
+            <output id="brightnessOut">
+                1.20
+            </output>
+
+
+            <input
+                id="brightness"
+                type="range"
+                min="0.5"
+                max="2.5"
+                step="0.05"
+                value="1.2"
+            >
+
+        </label>
+
+
+        <!-- =====================================
+             CONTRASTE
+        ====================================== -->
+
+        <label>
+
+            <span>
+                Contraste
+            </span>
+
+            <output id="contrastOut">
+                1.35
+            </output>
+
+
+            <input
+                id="contrast"
+                type="range"
+                min="0.5"
+                max="2.5"
+                step="0.05"
+                value="1.35"
+            >
+
+        </label>
+
+
+        <!-- =====================================
+             GANANCIA
+        ====================================== -->
+
+        <label>
+
+            <span>
+                Ganancia
+            </span>
+
+            <output id="gainOut">
+                1.00
+            </output>
+
+
+            <input
+                id="gain"
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.05"
+                value="1"
+            >
+
+        </label>
+
+
+        <!-- =====================================
+             ZOOM
+        ====================================== -->
+
+        <label>
+
+            <span>
+                Zoom
+            </span>
+
+            <output id="zoomOut">
+                0.8×
+            </output>
+
+
+            <input
+                id="zoom"
+                type="range"
+                min="0.8"
+                max="4"
+                step="0.1"
+                value="0.8"
+            >
+
+        </label>
+
+
+        <!-- =====================================
+             FUNCIONES
+        ====================================== -->
+
+        <div class="control-grid">
+
+
+            <button
+                data-action="mode"
+            >
+                MODO: VERDE
+            </button>
+
+
+            <button
+                data-action="vr"
+            >
+                VR: OFF
+            </button>
+
+
+            <button
+                data-action="crosshair"
+            >
+                RETÍCULA: ON
+            </button>
+
+
+            <button
+                data-action="mirror"
+            >
+                ESPEJO: OFF
+            </button>
+
+
+            <button
+                data-action="torch"
+            >
+                LINTERNA: OFF
+            </button>
+
+
+            <button
+                data-action="fullscreen"
+            >
+                PANTALLA COMPLETA
+            </button>
+
+
+        </div>
+
+
+        <!-- =====================================
+             MEDICIÓN
+        ====================================== -->
+
+        <div class="measurement-panel">
+
+            <div class="measurement-title">
+                MEDICIÓN TANGENCIAL
+            </div>
+
+
+            <div class="measurement-info">
+
+                OBJETO
+                <strong>
+                    50 × 50 CM
+                </strong>
+
+            </div>
+
+
+            <div class="measurement-info">
+
+                ALTURA CÁMARA
+                <strong>
+                    1.65 M
+                </strong>
+
+            </div>
+
+
+            <div class="measurement-info">
+
+                RANGO
+                <strong>
+                    30–100 M
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================
+             RESTABLECER
+        ====================================== -->
+
+        <button
+            id="resetBtn"
+            class="secondary-button"
+        >
+            RESTABLECER
+        </button>
+
+
+        <!-- =====================================
+             INFORMACIÓN
+        ====================================== -->
+
+        <p class="warning">
+
+            El modo térmico es una representación
+            pseudotérmica de la luminancia de la
+            cámara. No es una cámara térmica real.
+
+        </p>
+
+
+    </aside>
+
+
+</main>
+
+
+<script src="./app.js"></script>
+
+
+<script>
+
+if ("serviceWorker" in navigator) {
+
+    navigator.serviceWorker
+        .register("./sw.js")
+        .catch(
+            error =>
+                console.warn(
+                    "Service Worker:",
+                    error
+                )
+        );
+
+}
+
+</script>
+
 
 </body>
 
