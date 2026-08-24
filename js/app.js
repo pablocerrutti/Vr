@@ -1,12 +1,22 @@
 /* =========================================================
-   LONWOLF NIGHTVISION VR
-   APP.JS — WEBGL / GPU
+   LoneWolf.uy  NIGHTVISION VR
+   V5
+   WebGL GPU / iPhone optimized
    ========================================================= */
 
-const video = document.getElementById("camera");
-const canvas = document.getElementById("view");
 
-const $ = id => document.getElementById(id);
+/* =========================================================
+   ELEMENTOS
+   ========================================================= */
+
+const video =
+  document.getElementById("camera");
+
+const canvas =
+  document.getElementById("view");
+
+const $ =
+  id => document.getElementById(id);
 
 
 /* =========================================================
@@ -16,19 +26,28 @@ const $ = id => document.getElementById(id);
 let stream = null;
 let track = null;
 
-let raf = 0;
+let animationFrame = 0;
 
-let lastRender = 0;
-let fpsTime = performance.now();
-let frames = 0;
+let lastFrame = 0;
+
+let fpsCounter = 0;
+
+let fpsTime =
+  performance.now();
 
 const TARGET_FPS = 30;
-const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+const FRAME_TIME =
+  1000 / TARGET_FPS;
 
 let mode = 0;
+
 let vr = false;
+
 let cross = true;
+
 let mirror = false;
+
 let torch = false;
 
 
@@ -39,8 +58,11 @@ let torch = false;
 const state = {
 
   brightness: 1.2,
+
   contrast: 1.35,
+
   gain: 1,
+
   zoom: 0.8
 
 };
@@ -55,7 +77,9 @@ function loadState() {
   try {
 
     const saved =
-      localStorage.getItem("nvvr_v3");
+      localStorage.getItem(
+        "nvvr_v5"
+      );
 
     if (saved) {
 
@@ -66,10 +90,12 @@ function loadState() {
 
     }
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.warn(
-      "Error cargando configuración:",
+      "Error cargando configuración",
       error
     );
 
@@ -97,60 +123,70 @@ function loadState() {
 
 function updateControls() {
 
-  if ($("brightness")) {
+  const controls = [
 
-    $("brightness").value =
-      state.brightness;
+    "brightness",
+    "contrast",
+    "gain",
+    "zoom"
 
-  }
+  ];
 
-  if ($("contrast")) {
 
-    $("contrast").value =
-      state.contrast;
+  controls.forEach(
+    id => {
 
-  }
+      const element =
+        $(id);
 
-  if ($("gain")) {
+      if (element) {
 
-    $("gain").value =
-      state.gain;
+        element.value =
+          state[id];
 
-  }
+      }
 
-  if ($("zoom")) {
-
-    $("zoom").value =
-      state.zoom;
-
-  }
+    }
+  );
 
 
   if ($("brightnessOut")) {
 
     $("brightnessOut").textContent =
-      Number(state.brightness).toFixed(2);
+      Number(
+        state.brightness
+      ).toFixed(2);
 
   }
+
 
   if ($("contrastOut")) {
 
     $("contrastOut").textContent =
-      Number(state.contrast).toFixed(2);
+      Number(
+        state.contrast
+      ).toFixed(2);
 
   }
+
 
   if ($("gainOut")) {
 
     $("gainOut").textContent =
-      Number(state.gain).toFixed(2);
+      Number(
+        state.gain
+      ).toFixed(2);
 
   }
+
 
   if ($("zoomOut")) {
 
     $("zoomOut").textContent =
-      Number(state.zoom).toFixed(1) + "×";
+      Number(
+        state.zoom
+      ).toFixed(1) +
+      "×";
 
   }
 
@@ -166,14 +202,19 @@ function saveState() {
   try {
 
     localStorage.setItem(
-      "nvvr_v3",
+
+      "nvvr_v5",
+
       JSON.stringify(state)
+
     );
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.warn(
-      "Error guardando configuración:",
+      "Error guardando configuración",
       error
     );
 
@@ -193,12 +234,20 @@ const gl =
   canvas.getContext(
     "webgl",
     {
+
       alpha: false,
+
       antialias: false,
+
       depth: false,
+
       stencil: false,
+
       preserveDrawingBuffer: false,
-      powerPreference: "high-performance"
+
+      powerPreference:
+        "high-performance"
+
     }
   );
 
@@ -206,23 +255,24 @@ const gl =
 if (!gl) {
 
   alert(
-    "Este navegador no soporta WebGL. Se necesita WebGL para el modo de alto rendimiento."
+    "WebGL no está disponible en este navegador."
   );
 
   throw new Error(
-    "WebGL no disponible"
+    "WebGL unavailable"
   );
 
 }
 
 
 /* =========================================================
-   VERTEX SHADER
+   SHADER VERTEX
    ========================================================= */
 
 const vertexShaderSource = `
 
 attribute vec2 a_position;
+
 attribute vec2 a_texCoord;
 
 varying vec2 v_texCoord;
@@ -245,7 +295,7 @@ void main() {
 
 
 /* =========================================================
-   FRAGMENT SHADER
+   SHADER FRAGMENT
    ========================================================= */
 
 const fragmentShaderSource = `
@@ -255,7 +305,9 @@ precision mediump float;
 uniform sampler2D u_texture;
 
 uniform float u_brightness;
+
 uniform float u_contrast;
+
 uniform float u_gain;
 
 uniform float u_zoom;
@@ -264,36 +316,14 @@ uniform float u_mode;
 
 uniform float u_mirror;
 
+uniform float u_vrEye;
+
 uniform vec2 u_sourceAspect;
+
 uniform vec2 u_outputAspect;
 
 varying vec2 v_texCoord;
 
-
-/* ---------------------------------------------
-   LUMINANCIA
-   --------------------------------------------- */
-
-float luminance(
-  vec3 color
-) {
-
-  return
-    dot(
-      color,
-      vec3(
-        0.2126,
-        0.7152,
-        0.0722
-      )
-    );
-
-}
-
-
-/* ---------------------------------------------
-   MAIN
-   --------------------------------------------- */
 
 void main() {
 
@@ -301,9 +331,9 @@ void main() {
     v_texCoord;
 
 
-  /* -------------------------------------------
+  /* =====================================
      ESPEJO
-     ------------------------------------------- */
+     ===================================== */
 
   if (
     u_mirror > 0.5
@@ -315,9 +345,33 @@ void main() {
   }
 
 
-  /* -------------------------------------------
-     CORRECCIÓN DE ASPECT RATIO
-     ------------------------------------------- */
+  /* =====================================
+     VR
+     ===================================== */
+
+  if (
+    u_vrEye > 0.5
+  ) {
+
+    /*
+       Separación ligera
+       para los dos ojos.
+    */
+
+    float eyeOffset =
+      u_vrEye < 1.5
+        ? -0.012
+        : 0.012;
+
+    uv.x +=
+      eyeOffset;
+
+  }
+
+
+  /* =====================================
+     ASPECT RATIO
+     ===================================== */
 
   float sourceRatio =
     u_sourceAspect.x /
@@ -333,56 +387,42 @@ void main() {
 
 
   if (
-    sourceRatio > outputRatio
+    sourceRatio >
+    outputRatio
   ) {
 
-    float scale =
+    centered.x *=
       outputRatio /
       sourceRatio;
-
-    centered.x *= scale;
 
   }
 
   else {
 
-    float scale =
+    centered.y *=
       sourceRatio /
       outputRatio;
-
-    centered.y *= scale;
 
   }
 
 
-  /*
-     Zoom.
+  /* =====================================
+     ZOOM
 
-     1.0 = referencia
-     >1.0 = ampliación
-
-     Para 0.8 buscamos
-     mostrar el máximo campo disponible.
-  */
-
-  float effectiveZoom =
-    max(
-      u_zoom,
-      0.8
-    );
-
+     0.8 = máximo campo
+     1.0 = normal
+     ===================================== */
 
   centered /=
-    effectiveZoom;
+    max(
+      0.8,
+      u_zoom
+    );
 
 
   uv =
     centered + 0.5;
 
-
-  /*
-     Evitar muestreo fuera de imagen
-  */
 
   uv =
     clamp(
@@ -392,9 +432,9 @@ void main() {
     );
 
 
-  /* -------------------------------------------
-     OBTENER COLOR
-     ------------------------------------------- */
+  /* =====================================
+     CÁMARA
+     ===================================== */
 
   vec3 color =
     texture2D(
@@ -403,19 +443,24 @@ void main() {
     ).rgb;
 
 
-  /* -------------------------------------------
+  /* =====================================
      LUMINANCIA
-     ------------------------------------------- */
+     ===================================== */
 
   float y =
-    luminance(
-      color
+    dot(
+      color,
+      vec3(
+        0.2126,
+        0.7152,
+        0.0722
+      )
     );
 
 
-  /* -------------------------------------------
+  /* =====================================
      CONTRASTE
-     ------------------------------------------- */
+     ===================================== */
 
   y =
     (
@@ -424,9 +469,9 @@ void main() {
     ) + 0.5;
 
 
-  /* -------------------------------------------
-     BRILLO + GANANCIA
-     ------------------------------------------- */
+  /* =====================================
+     BRILLO / GANANCIA
+     ===================================== */
 
   y *=
     u_brightness *
@@ -441,9 +486,9 @@ void main() {
     );
 
 
-  /* -------------------------------------------
-     MODO VERDE
-     ------------------------------------------- */
+  /* =====================================
+     VERDE
+     ===================================== */
 
   if (
     u_mode < 0.5
@@ -451,17 +496,17 @@ void main() {
 
     color =
       vec3(
-        y * 0.41,
+        y * 0.35,
         y,
-        y * 0.45
+        y * 0.40
       );
 
   }
 
 
-  /* -------------------------------------------
-     B/N
-     ------------------------------------------- */
+  /* =====================================
+     BLANCO Y NEGRO
+     ===================================== */
 
   else if (
     u_mode < 1.5
@@ -473,9 +518,9 @@ void main() {
   }
 
 
-  /* -------------------------------------------
+  /* =====================================
      ROJO
-     ------------------------------------------- */
+     ===================================== */
 
   else if (
     u_mode < 2.5
@@ -484,26 +529,24 @@ void main() {
     color =
       vec3(
         y,
-        y * 0.25,
-        y * 0.12
+        y * 0.22,
+        y * 0.08
       );
 
   }
 
 
-  /* -------------------------------------------
+  /* =====================================
      INVERSO
-     ------------------------------------------- */
+     ===================================== */
 
   else {
 
-    float inverseY =
+    float inv =
       1.0 - y;
 
     color =
-      vec3(
-        inverseY
-      );
+      vec3(inv);
 
   }
 
@@ -550,18 +593,17 @@ function compileShader(
     )
   ) {
 
-    const log =
+    const error =
       gl.getShaderInfoLog(
         shader
       );
 
-    gl.deleteShader(
-      shader
+    console.error(
+      error
     );
 
     throw new Error(
-      "Shader error: " +
-      log
+      "Error compilando WebGL"
     );
 
   }
@@ -573,7 +615,7 @@ function compileShader(
 
 
 /* =========================================================
-   CREAR PROGRAMA
+   PROGRAMA
    ========================================================= */
 
 const vertexShader =
@@ -633,7 +675,7 @@ gl.useProgram(
 
 
 /* =========================================================
-   POSICIONES
+   GEOMETRÍA
    ========================================================= */
 
 const positionBuffer =
@@ -697,7 +739,7 @@ gl.vertexAttribPointer(
 
 
 /* =========================================================
-   TEXTURAS
+   COORDENADAS TEXTURA
    ========================================================= */
 
 const texCoordBuffer =
@@ -761,7 +803,7 @@ gl.vertexAttribPointer(
 
 
 /* =========================================================
-   TEXTURA DE CÁMARA
+   TEXTURA
    ========================================================= */
 
 const cameraTexture =
@@ -806,7 +848,7 @@ gl.texParameteri(
    UNIFORMS
    ========================================================= */
 
-const uniforms = {
+const u = {
 
   texture:
     gl.getUniformLocation(
@@ -850,6 +892,12 @@ const uniforms = {
       "u_mirror"
     ),
 
+  vrEye:
+    gl.getUniformLocation(
+      program,
+      "u_vrEye"
+    ),
+
   sourceAspect:
     gl.getUniformLocation(
       program,
@@ -865,57 +913,72 @@ const uniforms = {
 };
 
 
-/* =========================================================
-   TEXTURA UNIT 0
-   ========================================================= */
-
-gl.activeTexture(
-  gl.TEXTURE0
-);
-
-
-gl.bindTexture(
-  gl.TEXTURE_2D,
-  cameraTexture
-);
-
-
 gl.uniform1i(
-  uniforms.texture,
+  u.texture,
   0
 );
 
 
 /* =========================================================
-   RESIZE WEBGL
+   RESIZE
    ========================================================= */
 
 function resize() {
 
-  const dpr =
+  /*
+     No usamos DPR x 2.
+     Esto evita renderizar millones
+     de píxeles innecesarios.
+  */
+
+  const maxWidth =
+    960;
+
+
+  const width =
     Math.min(
-      window.devicePixelRatio || 1,
-      2
+      window.innerWidth,
+      maxWidth
+    );
+
+
+  const height =
+    width *
+    (
+      window.innerHeight /
+      window.innerWidth
     );
 
 
   canvas.width =
-    Math.floor(
-      innerWidth * dpr
+    Math.max(
+      640,
+      Math.floor(width)
     );
 
 
   canvas.height =
-    Math.floor(
-      innerHeight * dpr
+    Math.max(
+      360,
+      Math.floor(height)
     );
 
 
+  canvas.style.width =
+    "100%";
+
+
+  canvas.style.height =
+    "100%";
+
+
   gl.viewport(
+
     0,
     0,
     canvas.width,
     canvas.height
+
   );
 
 }
@@ -931,7 +994,7 @@ resize();
 
 
 /* =========================================================
-   INICIAR CÁMARA
+   CÁMARA
    ========================================================= */
 
 async function startCamera() {
@@ -943,7 +1006,7 @@ async function startCamera() {
     ) {
 
       throw new Error(
-        "La cámara necesita HTTPS o localhost."
+        "La cámara necesita HTTPS."
       );
 
     }
@@ -959,11 +1022,13 @@ async function startCamera() {
           },
 
           width: {
-            ideal: 1280
+            ideal: 640,
+            max: 640
           },
 
           height: {
-            ideal: 720
+            ideal: 360,
+            max: 360
           },
 
           frameRate: {
@@ -990,18 +1055,26 @@ async function startCamera() {
 
 
     /*
-       Intentar solicitar 30 FPS
+       Intentar 30 FPS.
     */
 
     try {
 
       await track.applyConstraints({
 
-        frameRate: {
+        width: {
+          ideal: 640,
+          max: 640
+        },
 
+        height: {
+          ideal: 360,
+          max: 360
+        },
+
+        frameRate: {
           ideal: 30,
           max: 30
-
         }
 
       });
@@ -1011,7 +1084,7 @@ async function startCamera() {
     catch (error) {
 
       console.warn(
-        "No se pudo fijar frameRate:",
+        "No se pudieron aplicar restricciones:",
         error
       );
 
@@ -1035,21 +1108,17 @@ async function startCamera() {
     }
 
 
-    /*
-       Reiniciar contador
-    */
-
-    lastRender =
-      performance.now();
+    fpsCounter = 0;
 
     fpsTime =
       performance.now();
 
-    frames = 0;
+    lastFrame =
+      performance.now();
 
 
     cancelAnimationFrame(
-      raf
+      animationFrame
     );
 
 
@@ -1083,86 +1152,10 @@ async function startCamera() {
 
 
 /* =========================================================
-   RENDER GPU
+   DIBUJAR FRAME
    ========================================================= */
 
-function render(timestamp) {
-
-  if (!timestamp) {
-
-    timestamp =
-      performance.now();
-
-  }
-
-
-  /*
-     Limitar a 30 FPS.
-  */
-
-  if (
-    timestamp -
-    lastRender >=
-    FRAME_INTERVAL
-  ) {
-
-    lastRender =
-      timestamp;
-
-
-    if (
-      video.readyState >=
-      HTMLMediaElement.HAVE_CURRENT_DATA
-    ) {
-
-      drawWebGL();
-
-      frames++;
-
-    }
-
-  }
-
-
-  /*
-     Mostrar FPS
-  */
-
-  if (
-    timestamp -
-    fpsTime >=
-    1000
-  ) {
-
-    if ($("fps")) {
-
-      $("fps").textContent =
-        frames + " FPS";
-
-    }
-
-
-    frames = 0;
-
-    fpsTime =
-      timestamp;
-
-  }
-
-
-  raf =
-    requestAnimationFrame(
-      render
-    );
-
-}
-
-
-/* =========================================================
-   DIBUJAR CÁMARA EN GPU
-   ========================================================= */
-
-function drawWebGL() {
+function drawFrame() {
 
   if (
     !video.videoWidth ||
@@ -1174,9 +1167,10 @@ function drawWebGL() {
   }
 
 
-  /*
-     Subir frame de cámara a textura.
-  */
+  gl.activeTexture(
+    gl.TEXTURE0
+  );
+
 
   gl.bindTexture(
     gl.TEXTURE_2D,
@@ -1189,6 +1183,11 @@ function drawWebGL() {
     true
   );
 
+
+  /*
+     Esta operación sube únicamente
+     el frame 640x360.
+  */
 
   gl.texImage2D(
 
@@ -1207,63 +1206,55 @@ function drawWebGL() {
   );
 
 
-  /*
+  /* -------------------------------------
      Parámetros
-  */
+     ------------------------------------- */
 
   gl.uniform1f(
-    uniforms.brightness,
-    Number(
-      state.brightness
-    )
+    u.brightness,
+    state.brightness
   );
 
 
   gl.uniform1f(
-    uniforms.contrast,
-    Number(
-      state.contrast
-    )
+    u.contrast,
+    state.contrast
   );
 
 
   gl.uniform1f(
-    uniforms.gain,
-    Number(
-      state.gain
-    )
+    u.gain,
+    state.gain
   );
 
 
   gl.uniform1f(
-    uniforms.zoom,
+    u.zoom,
     Math.max(
       0.8,
       Math.min(
         4,
-        Number(state.zoom)
+        state.zoom
       )
     )
   );
 
 
   gl.uniform1f(
-    uniforms.mode,
+    u.mode,
     mode
   );
 
 
   gl.uniform1f(
-    uniforms.mirror,
-    mirror
-      ? 1
-      : 0
+    u.mirror,
+    mirror ? 1 : 0
   );
 
 
   gl.uniform2f(
 
-    uniforms.sourceAspect,
+    u.sourceAspect,
 
     video.videoWidth,
     video.videoHeight
@@ -1271,19 +1262,14 @@ function drawWebGL() {
   );
 
 
-  gl.uniform2f(
+  /* -------------------------------------
+     Limpiar
+     ------------------------------------- */
 
-    uniforms.outputAspect,
-
-    canvas.width,
-    canvas.height
-
+  gl.disable(
+    gl.SCISSOR_TEST
   );
 
-
-  /*
-     Limpiar
-  */
 
   gl.clearColor(
     0,
@@ -1298,19 +1284,15 @@ function drawWebGL() {
   );
 
 
-  /*
-     Dibujar.
-  */
+  /* -------------------------------------
+     VR
+     ------------------------------------- */
 
   if (vr) {
 
-    /*
-       Para VR necesitamos dos pasadas.
-       Por ahora dibujamos la misma imagen
-       en ambos lados.
+    const half =
+      canvas.width / 2;
 
-       La GPU sigue haciendo el procesamiento.
-    */
 
     gl.enable(
       gl.SCISSOR_TEST
@@ -1318,83 +1300,87 @@ function drawWebGL() {
 
 
     /*
-       Ojo izquierdo
+       OJO IZQUIERDO
     */
 
-    gl.scissor(
-
+    gl.viewport(
       0,
       0,
-      canvas.width / 2,
+      half,
       canvas.height
-
     );
 
 
-    gl.viewport(
+    gl.scissor(
+      0,
+      0,
+      half,
+      canvas.height
+    );
 
-      0,
-      0,
-      canvas.width / 2,
+
+    gl.uniform1f(
+      u.vrEye,
+      1
+    );
+
+
+    gl.uniform2f(
+
+      u.outputAspect,
+
+      half,
       canvas.height
 
     );
 
 
     gl.drawArrays(
-
       gl.TRIANGLES,
       0,
       6
-
     );
 
 
     /*
-       Ojo derecho
+       OJO DERECHO
     */
 
-    gl.scissor(
+    gl.viewport(
 
-      canvas.width / 2,
+      half,
       0,
-      canvas.width / 2,
+      half,
       canvas.height
 
     );
 
 
-    gl.viewport(
+    gl.scissor(
 
-      canvas.width / 2,
+      half,
       0,
-      canvas.width / 2,
+      half,
       canvas.height
 
+    );
+
+
+    gl.uniform1f(
+      u.vrEye,
+      2
     );
 
 
     gl.drawArrays(
-
       gl.TRIANGLES,
       0,
       6
-
     );
 
 
     gl.disable(
       gl.SCISSOR_TEST
-    );
-
-
-    gl.viewport(
-
-      0,
-      0,
-      canvas.width,
-      canvas.height
-
     );
 
   }
@@ -1405,6 +1391,22 @@ function drawWebGL() {
 
       0,
       0,
+      canvas.width,
+      canvas.height
+
+    );
+
+
+    gl.uniform1f(
+      u.vrEye,
+      0
+    );
+
+
+    gl.uniform2f(
+
+      u.outputAspect,
+
       canvas.width,
       canvas.height
 
@@ -1425,7 +1427,74 @@ function drawWebGL() {
 
 
 /* =========================================================
-   BOTÓN ACTIVAR CÁMARA
+   RENDER 30 FPS
+   ========================================================= */
+
+function render(
+  timestamp
+) {
+
+  if (
+    timestamp === undefined
+  ) {
+
+    timestamp =
+      performance.now();
+
+  }
+
+
+  if (
+    timestamp -
+    lastFrame >=
+    FRAME_TIME
+  ) {
+
+    lastFrame =
+      timestamp;
+
+
+    drawFrame();
+
+
+    fpsCounter++;
+
+  }
+
+
+  if (
+    timestamp -
+    fpsTime >=
+    1000
+  ) {
+
+    if ($("fps")) {
+
+      $("fps").textContent =
+        fpsCounter +
+        " FPS";
+
+    }
+
+
+    fpsCounter = 0;
+
+    fpsTime =
+      timestamp;
+
+  }
+
+
+  animationFrame =
+    requestAnimationFrame(
+      render
+    );
+
+}
+
+
+/* =========================================================
+   ACTIVAR
    ========================================================= */
 
 if ($("startBtn")) {
@@ -1454,7 +1523,7 @@ if ($("menuBtn")) {
 
 
 /* =========================================================
-   CERRAR MENÚ
+   CERRAR
    ========================================================= */
 
 if ($("closeBtn")) {
@@ -1474,334 +1543,368 @@ if ($("closeBtn")) {
    SLIDERS
    ========================================================= */
 
-for (
-  const id of [
-    "brightness",
-    "contrast",
-    "gain",
-    "zoom"
-  ]
-) {
+[
+  "brightness",
+  "contrast",
+  "gain",
+  "zoom"
 
-  const element =
-    $(id);
+].forEach(
 
+  id => {
 
-  if (!element) {
-
-    continue;
-
-  }
+    const element =
+      $(id);
 
 
-  element.addEventListener(
-    "input",
-    () => {
+    if (!element) {
 
-      state[id] =
-        Number(
-          element.value
-        );
+      return;
+
+    }
 
 
-      if (
-        id === "zoom"
-      ) {
+    element.addEventListener(
+      "input",
+      () => {
 
-        state.zoom =
-          Math.max(
-            0.8,
-            Math.min(
-              4,
-              state.zoom
-            )
+        state[id] =
+          Number(
+            element.value
           );
 
 
-        element.value =
-          state.zoom;
-
-      }
-
-
-      const output =
-        $(`${id}Out`);
-
-
-      if (output) {
-
-        output.textContent =
-
+        if (
           id === "zoom"
+        ) {
 
-            ? state.zoom.toFixed(1) + "×"
+          state.zoom =
+            Math.max(
+              0.8,
+              Math.min(
+                4,
+                state.zoom
+              )
+            );
 
-            : state[id].toFixed(2);
+          element.value =
+            state.zoom;
+
+        }
+
+
+        const output =
+          $(`${id}Out`);
+
+
+        if (output) {
+
+          output.textContent =
+
+            id === "zoom"
+
+              ? state.zoom.toFixed(1) +
+                "×"
+
+              : state[id].toFixed(2);
+
+        }
+
+
+        saveState();
 
       }
+    );
 
-
-      saveState();
-
-    }
-  );
-
-}
+  }
+);
 
 
 /* =========================================================
-   BOTONES DE ACCIÓN
+   BOTONES
    ========================================================= */
 
 document
   .querySelectorAll(
     "[data-action]"
   )
-  .forEach(button => {
+  .forEach(
 
-    button.addEventListener(
-      "click",
-      async () => {
+    button => {
 
-        const action =
-          button.dataset.action;
+      button.onclick =
+        async () => {
 
-
-        /* ---------------------------------
-           MODO
-        --------------------------------- */
-
-        if (
-          action === "mode"
-        ) {
-
-          mode =
-            (mode + 1) % 4;
+          const action =
+            button.dataset.action;
 
 
-          button.textContent =
-            [
-              "MODO: VERDE",
-              "MODO: B/N",
-              "MODO: ROJO",
-              "MODO: INVERSO"
-            ][mode];
+          /* =========================
+             MODO
+             ========================= */
 
-        }
+          if (
+            action === "mode"
+          ) {
 
-
-        /* ---------------------------------
-           VR
-        --------------------------------- */
-
-        else if (
-          action === "vr"
-        ) {
-
-          vr =
-            !vr;
+            mode =
+              (mode + 1) % 4;
 
 
-          button.textContent =
-            "VR: " +
-            (
-              vr
-                ? "ON"
-                : "OFF"
-            );
+            button.textContent =
+              [
+
+                "MODO: VERDE",
+
+                "MODO: B/N",
+
+                "MODO: ROJO",
+
+                "MODO: INVERSO"
+
+              ][mode];
 
 
-          if ($("vrLabel")) {
+            if ($("modeLabel")) {
 
-            $("vrLabel").textContent =
-              "VR " +
+              $("modeLabel").textContent =
+
+                [
+
+                  "NIGHT VISION",
+
+                  "BLACK & WHITE",
+
+                  "RED VISION",
+
+                  "INVERSE"
+
+                ][mode];
+
+            }
+
+          }
+
+
+          /* =========================
+             VR
+             ========================= */
+
+          else if (
+            action === "vr"
+          ) {
+
+            vr =
+              !vr;
+
+
+            button.textContent =
+              "VR: " +
               (
                 vr
                   ? "ON"
                   : "OFF"
               );
 
-          }
 
-        }
+            if ($("vrLabel")) {
 
-
-        /* ---------------------------------
-           RETÍCULA
-        --------------------------------- */
-
-        else if (
-          action === "crosshair"
-        ) {
-
-          cross =
-            !cross;
-
-
-          if ($("crosshair")) {
-
-            $("crosshair").style.display =
-              cross
-                ? ""
-                : "none";
-
-          }
-
-
-          button.textContent =
-            "RETÍCULA: " +
-            (
-              cross
-                ? "ON"
-                : "OFF"
-            );
-
-        }
-
-
-        /* ---------------------------------
-           ESPEJO
-        --------------------------------- */
-
-        else if (
-          action === "mirror"
-        ) {
-
-          mirror =
-            !mirror;
-
-
-          button.textContent =
-            "ESPEJO: " +
-            (
-              mirror
-                ? "ON"
-                : "OFF"
-            );
-
-        }
-
-
-        /* ---------------------------------
-           FULLSCREEN
-        --------------------------------- */
-
-        else if (
-          action === "fullscreen"
-        ) {
-
-          try {
-
-            if (
-              document.fullscreenElement
-            ) {
-
-              await document
-                .exitFullscreen?.();
-
-            }
-
-            else {
-
-              await document
-                .documentElement
-                .requestFullscreen?.();
-
-            }
-
-          }
-
-          catch (error) {
-
-            console.warn(
-              "Fullscreen:",
-              error
-            );
-
-          }
-
-        }
-
-
-        /* ---------------------------------
-           LINTERNA
-        --------------------------------- */
-
-        else if (
-          action === "torch"
-        ) {
-
-          if (!track) {
-
-            alert(
-              "Primero activa la cámara."
-            );
-
-            return;
-
-          }
-
-
-          try {
-
-            const capabilities =
-              track.getCapabilities?.();
-
-
-            if (
-              capabilities?.torch
-            ) {
-
-              torch =
-                !torch;
-
-
-              await track.applyConstraints({
-
-                advanced: [
-                  {
-                    torch
-                  }
-                ]
-
-              });
-
-
-              button.textContent =
-                "LINTERNA: " +
+              $("vrLabel").textContent =
+                "VR " +
                 (
-                  torch
+                  vr
                     ? "ON"
                     : "OFF"
                 );
 
             }
 
-            else {
+          }
 
-              alert(
-                "La cámara de este teléfono/navegador no expone control de linterna."
+
+          /* =========================
+             RETÍCULA
+             ========================= */
+
+          else if (
+            action === "crosshair"
+          ) {
+
+            cross =
+              !cross;
+
+
+            if ($("crosshair")) {
+
+              $("crosshair")
+                .style
+                .display =
+                  cross
+                    ? ""
+                    : "none";
+
+            }
+
+
+            button.textContent =
+              "RETÍCULA: " +
+              (
+                cross
+                  ? "ON"
+                  : "OFF"
+              );
+
+          }
+
+
+          /* =========================
+             ESPEJO
+             ========================= */
+
+          else if (
+            action === "mirror"
+          ) {
+
+            mirror =
+              !mirror;
+
+
+            button.textContent =
+              "ESPEJO: " +
+              (
+                mirror
+                  ? "ON"
+                  : "OFF"
+              );
+
+          }
+
+
+          /* =========================
+             FULLSCREEN
+             ========================= */
+
+          else if (
+            action === "fullscreen"
+          ) {
+
+            try {
+
+              if (
+                document.fullscreenElement
+              ) {
+
+                await document
+                  .exitFullscreen();
+
+              }
+
+              else {
+
+                await document
+                  .documentElement
+                  .requestFullscreen();
+
+              }
+
+            }
+
+            catch (error) {
+
+              console.warn(
+                "Fullscreen:",
+                error
               );
 
             }
 
           }
 
-          catch (error) {
 
-            console.warn(
-              "Linterna:",
-              error
-            );
+          /* =========================
+             LINTERNA
+             ========================= */
+
+          else if (
+            action === "torch"
+          ) {
+
+            if (!track) {
+
+              alert(
+                "Primero activa la cámara."
+              );
+
+              return;
+
+            }
+
+
+            try {
+
+              const caps =
+                track.getCapabilities?.();
+
+
+              if (
+                caps &&
+                caps.torch
+              ) {
+
+                torch =
+                  !torch;
+
+
+                await track.applyConstraints({
+
+                  advanced: [
+
+                    {
+                      torch:
+                        torch
+                    }
+
+                  ]
+
+                });
+
+
+                button.textContent =
+                  "LINTERNA: " +
+                  (
+                    torch
+                      ? "ON"
+                      : "OFF"
+                  );
+
+              }
+
+              else {
+
+                alert(
+                  "La cámara de este teléfono/navegador no permite controlar la linterna."
+                );
+
+              }
+
+            }
+
+            catch (error) {
+
+              console.warn(
+                "Error linterna:",
+                error
+              );
+
+            }
 
           }
 
-        }
+        };
 
-      }
-    );
+    }
 
-  });
+  );
 
 
 /* =========================================================
@@ -1813,13 +1916,21 @@ if ($("resetBtn")) {
   $("resetBtn").onclick = () => {
 
     Object.assign(
+
       state,
+
       {
+
         brightness: 1.2,
+
         contrast: 1.35,
+
         gain: 1,
+
         zoom: 0.8
+
       }
+
     );
 
 
@@ -1833,7 +1944,7 @@ if ($("resetBtn")) {
 
 
 /* =========================================================
-   DOBLE CLICK → FULLSCREEN
+   DOBLE TOQUE
    ========================================================= */
 
 document.addEventListener(
@@ -1849,7 +1960,7 @@ document.addEventListener(
 
 
 /* =========================================================
-   DETENER CÁMARA
+   SALIR
    ========================================================= */
 
 window.addEventListener(
