@@ -1,5 +1,5 @@
 /* =========================================================
-   LONWOLF NIGHTVISION VR
+   LONEWOLF NIGHTVISION VR
    V10
    iPhone SE 2020 - FOV CALIBRATED
    ========================================================= */
