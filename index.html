@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
 
     <meta charset="UTF-8">
@@ -52,6 +53,7 @@
 
 </head>
 
+
 <body>
 
     <div id="app">
@@ -78,7 +80,7 @@
 
 
         <!-- =================================
-             RETÍCULA VISUAL
+             RETÍCULA
         ================================== -->
 
         <div
@@ -86,11 +88,107 @@
             class="reticle hidden"
         >
 
-            <div class="reticle-horizontal"></div>
+            <!-- Línea horizontal principal -->
 
-            <div class="reticle-vertical"></div>
+            <div
+                class="reticle-horizontal"
+            ></div>
 
-            <div class="reticle-center"></div>
+
+            <!-- Línea vertical principal -->
+
+            <div
+                class="reticle-vertical"
+            ></div>
+
+
+            <!-- Centro -->
+
+            <div
+                class="reticle-center"
+            ></div>
+
+
+            <!-- =================================
+                 ESCALA DE DISTANCIA
+            ================================== -->
+
+            <div
+                id="distanceScale"
+                class="distance-scale"
+            ></div>
+
+
+            <!-- =================================
+                 REFERENCIA CENTRAL
+            ================================== -->
+
+            <div
+                class="reference-center"
+            >
+
+                <span
+                    class="reference-horizontal"
+                ></span>
+
+                <span
+                    class="reference-vertical"
+                ></span>
+
+            </div>
+
+
+            <!-- =================================
+                 REFERENCIA 170 x 45 CM
+            ================================== -->
+
+            <div
+                class="target-reference"
+            >
+
+                <span
+                    class="target-reference-top"
+                ></span>
+
+                <span
+                    class="target-reference-side"
+                ></span>
+
+                <span
+                    class="target-reference-bottom"
+                ></span>
+
+                <span
+                    class="target-reference-label"
+                >
+                    170 × 45
+                </span>
+
+            </div>
+
+
+            <!-- =================================
+                 INDICADOR DE USO
+            ================================== -->
+
+            <div
+                id="distanceInstruction"
+                class="distance-instruction"
+            >
+                BASE DEL OBJETO
+            </div>
+
+
+            <!-- =================================
+                 HUD DISTANCIA
+            ================================== -->
+
+            <div
+                id="distanceHud"
+                class="distance-hud"
+            >
+                DIST: -- m
+            </div>
 
         </div>
 
@@ -143,6 +241,7 @@
                 CÁMARA
             </button>
 
+
             <button
                 id="nightButton"
                 class="control-button active"
@@ -151,6 +250,7 @@
                 NV
             </button>
 
+
             <button
                 id="reticleButton"
                 class="control-button"
@@ -158,6 +258,7 @@
             >
                 RETÍCULA
             </button>
+
 
             <button
                 id="switchButton"
@@ -175,7 +276,7 @@
         ================================== -->
 
         <div id="version">
-            V1.0.0
+            V1.1.0
         </div>
 
     </div>
@@ -204,11 +305,6 @@
                         "Service Worker activo"
                     );
 
-                    /*
-                     * Comprobar actualizaciones
-                     * periódicamente.
-                     */
-
                     setInterval(() => {
 
                         registration.update();
@@ -226,11 +322,6 @@
                 });
 
 
-            /*
-             * Cuando una versión nueva toma
-             * el control, recargar.
-             */
-
             navigator.serviceWorker.addEventListener(
                 "controllerchange",
                 () => {
@@ -245,4 +336,5 @@
     </script>
 
 </body>
+
 </html>
