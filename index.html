@@ -1,8 +1,6 @@
 <!doctype html>
 <html lang="es">
-
 <head>
-
   <meta charset="utf-8">
 
   <meta
@@ -10,49 +8,20 @@
     content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
   >
 
-  <meta
-    name="theme-color"
-    content="#050805"
-  >
-
-  <meta
-    name="mobile-web-app-capable"
-    content="yes"
-  >
-
-  <meta
-    name="apple-mobile-web-app-capable"
-    content="yes"
-  >
-
-  <meta
-    name="apple-mobile-web-app-status-bar-style"
-    content="black-translucent"
-  >
+  <meta name="theme-color" content="#050805">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <title>LONWOLF NIGHTVISION VR</title>
 
-  <link
-    rel="manifest"
-    href="manifest.json"
-  >
-
-  <link
-    rel="stylesheet"
-    href="css/style.css"
-  >
-
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 
 <body>
 
 <main id="app">
-
-
-  <!-- =========================================
-       CÁMARA
-       ========================================= -->
 
   <video
     id="camera"
@@ -61,45 +30,119 @@
     playsinline
   ></video>
 
-
-  <!-- =========================================
-       RENDER WEBGL
-       ========================================= -->
-
   <canvas id="view"></canvas>
 
+  <!-- ==================================================
+       RETÍCULA
+       ================================================== -->
 
-  <!-- =========================================
-       RETÍCULAS
-       En VR hay una por cada ojo
-       ========================================= -->
+  <div id="reticle">
 
-  <div
-    id="crosshair"
-    aria-hidden="true"
-  >
+    <!-- RETÍCULA NORMAL -->
 
-    <div class="crosshair-eye left">
+    <div id="normalReticle">
 
-      <span></span>
-      <i></i>
+      <div class="crosshair">
+
+        <span class="horizontal"></span>
+        <span class="vertical"></span>
+
+        <span class="center-dot"></span>
+
+      </div>
+
+      <div id="rangeScale">
+
+        <div class="range-label label20">20</div>
+        <div class="range-label label30">30</div>
+        <div class="range-label label40">40</div>
+        <div class="range-label label50">50</div>
+        <div class="range-label label60">60</div>
+        <div class="range-label label75">75</div>
+        <div class="range-label label100">100</div>
+
+        <div class="range-line line20"></div>
+        <div class="range-line line30"></div>
+        <div class="range-line line40"></div>
+        <div class="range-line line50"></div>
+        <div class="range-line line60"></div>
+        <div class="range-line line75"></div>
+        <div class="range-line line100"></div>
+
+      </div>
+
+      <div class="reticle-info">
+        OBJETIVO 45 × 40 CM
+      </div>
 
     </div>
 
 
-    <div class="crosshair-eye right">
+    <!-- ==================================================
+         RETÍCULAS VR
+         ================================================== -->
 
-      <span></span>
-      <i></i>
+    <div id="vrReticle">
+
+      <div class="vr-eye">
+
+        <div class="crosshair">
+
+          <span class="horizontal"></span>
+          <span class="vertical"></span>
+
+          <span class="center-dot"></span>
+
+        </div>
+
+        <div class="vr-scale">
+
+          <span class="vr-mark m20">20</span>
+          <span class="vr-mark m30">30</span>
+          <span class="vr-mark m40">40</span>
+          <span class="vr-mark m50">50</span>
+          <span class="vr-mark m60">60</span>
+          <span class="vr-mark m75">75</span>
+          <span class="vr-mark m100">100</span>
+
+        </div>
+
+      </div>
+
+
+      <div class="vr-eye">
+
+        <div class="crosshair">
+
+          <span class="horizontal"></span>
+          <span class="vertical"></span>
+
+          <span class="center-dot"></span>
+
+        </div>
+
+        <div class="vr-scale">
+
+          <span class="vr-mark m20">20</span>
+          <span class="vr-mark m30">30</span>
+          <span class="vr-mark m40">40</span>
+          <span class="vr-mark m50">50</span>
+          <span class="vr-mark m60">60</span>
+          <span class="vr-mark m75">75</span>
+          <span class="vr-mark m100">100</span>
+
+        </div>
+
+      </div>
 
     </div>
 
   </div>
 
 
-  <!-- =========================================
+  <!-- ==================================================
        HUD
-       ========================================= -->
+       ================================================== -->
 
   <div id="hud">
 
@@ -129,54 +172,22 @@
     </div>
 
 
-    <!-- =======================================
-         INFORMACIÓN DE MEDICIÓN
-         ======================================= -->
+    <div id="rangeLegend">
 
-    <div
-      id="distanceHud"
-      class="distance-hud hidden"
-    >
+      <span>45 × 40 CM</span>
 
-      <div class="distance-title">
-        DISTANCIA
-      </div>
-
-      <div
-        id="distanceValue"
-        class="distance-value"
-      >
-        --.- m
-      </div>
-
-      <div
-        id="angleValue"
-        class="distance-info"
-      >
-        ÁNGULO --.-°
-      </div>
-
-      <div
-        id="heightValue"
-        class="distance-info"
-      >
-        ALTURA 1.65 m
-      </div>
+      <span>20–100 M</span>
 
     </div>
-
 
   </div>
 
 
-  <!-- =========================================
+  <!-- ==================================================
        PANEL INICIAL
-       ========================================= -->
+       ================================================== -->
 
-  <section
-    id="startPanel"
-    class="panel"
-  >
+  <section id="startPanel" class="panel">
 
     <div class="brand">
       LONWOLF
@@ -195,16 +206,16 @@
 
     <small>
       La cámara requiere HTTPS.
-      Los sensores de movimiento pueden
-      solicitar autorización.
+      La aplicación puede funcionar offline
+      después de haber sido cargada.
     </small>
 
   </section>
 
 
-  <!-- =========================================
-       BOTÓN MENÚ
-       ========================================= -->
+  <!-- ==================================================
+       MENÚ
+       ================================================== -->
 
   <button
     id="menuBtn"
@@ -215,9 +226,9 @@
   </button>
 
 
-  <!-- =========================================
+  <!-- ==================================================
        CONTROLES
-       ========================================= -->
+       ================================================== -->
 
   <aside
     id="controls"
@@ -240,8 +251,6 @@
     </header>
 
 
-    <!-- BRILLO -->
-
     <label>
 
       Brillo
@@ -261,8 +270,6 @@
 
     </label>
 
-
-    <!-- CONTRASTE -->
 
     <label>
 
@@ -284,8 +291,6 @@
     </label>
 
 
-    <!-- GANANCIA -->
-
     <label>
 
       Ganancia
@@ -305,8 +310,6 @@
 
     </label>
 
-
-    <!-- ZOOM -->
 
     <label>
 
@@ -328,29 +331,22 @@
     </label>
 
 
-    <!-- ALTURA -->
+    <div class="target-box">
 
-    <label>
+      <strong>
+        REFERENCIA
+      </strong>
 
-      Altura de visión
+      <span>
+        45 × 40 CM
+      </span>
 
-      <output id="heightOut">
-        1.65 m
-      </output>
+      <small>
+        Escala angular 20–100 m
+      </small>
 
-      <input
-        id="height"
-        type="range"
-        min="0.5"
-        max="2.5"
-        step="0.01"
-        value="1.65"
-      >
+    </div>
 
-    </label>
-
-
-    <!-- ACCIONES -->
 
     <div class="grid">
 
@@ -362,7 +358,7 @@
         VR: OFF
       </button>
 
-      <button data-action="crosshair">
+      <button data-action="reticle">
         RETÍCULA: ON
       </button>
 
@@ -370,16 +366,8 @@
         ESPEJO: OFF
       </button>
 
-      <button data-action="measure">
-        MEDIR DISTANCIA
-      </button>
-
-      <button data-action="calibrate">
-        CALIBRAR HORIZONTAL
-      </button>
-
-      <button data-action="sensors">
-        ACTIVAR SENSORES
+      <button data-action="scale">
+        ESCALA: ON
       </button>
 
       <button data-action="torch">
@@ -403,32 +391,19 @@
 
     <p class="warning">
 
-      La medición es una estimación geométrica.
-      Supone que el punto apuntado está al nivel
-      del suelo. No sustituye un telémetro.
+      La escala representa el tamaño angular
+      de una referencia de 45 × 40 cm.
+      La distancia obtenida es aproximada y
+      depende del tamaño real del objeto,
+      perspectiva y encuadre.
 
     </p>
 
   </aside>
 
-
-  <!-- =========================================
-       BOTÓN MEDIR PARA VR
-       ========================================= -->
-
-  <button
-    id="measureVrBtn"
-    class="measure-vr"
-  >
-    MEDIR
-  </button>
-
-
 </main>
-
 
 <script src="js/app.js"></script>
 
 </body>
-
 </html>
