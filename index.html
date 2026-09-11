@@ -1,44 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>LONWOLF NIGHTVISION VR</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="manifest" href="manifest.json">
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#000000"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>LONWOLF NIGHTVISION VR</title><link rel="stylesheet" href="css/style.css"><link rel="manifest" href="manifest.json"></head>
 <body class="mode-normal">
-  <div id="orientation-warning">GIRA EL DISPOSITIVO<br>HORIZONTALMENTE</div>
-  <main id="normal-view" class="camera-view">
-    <video id="video-normal" class="camera-stream" autoplay playsinline muted></video>
-    <canvas id="canvas-normal" class="reticle-canvas"></canvas>
-  </main>
-  <main id="vr-view" class="vr-container" hidden>
-    <section class="vr-eye" id="eye-left"><video class="camera-stream" autoplay playsinline muted></video><canvas class="reticle-canvas"></canvas></section>
-    <section class="vr-eye" id="eye-right"><video class="camera-stream" autoplay playsinline muted></video><canvas class="reticle-canvas"></canvas></section>
-  </main>
-  <div id="sensor-status">SENSORES: INICIANDO</div>
-  <div id="permission-status">PREPARANDO SENSORES...</div>
-  <div id="camera-menu">
-    <button id="menu-toggle" type="button" aria-expanded="false">☰ CONTROL DE CÁMARA</button>
-    <div id="menu-panel" hidden>
-      <div class="menu-title">CONFIGURACIÓN DE CÁMARA</div>
-      <label>BRILLO <output id="brightness-value">260%</output><input id="brightness" type="range" min="100" max="400" value="260" step="5"></label>
-      <label>CONTRASTE <output id="contrast-value">200%</output><input id="contrast" type="range" min="100" max="350" value="200" step="5"></label>
-      <label>GANANCIA <output id="gain-value">120%</output><input id="gain" type="range" min="50" max="250" value="120" step="5"></label>
-      <label>FILTRO<select id="filter-select"><option value="normal">NORMAL / NOCTURNO</option><option value="green">VERDE FÓSFORO</option><option value="thermal">TÉRMICO PSEUDO</option><option value="bw">BLANCO / NEGRO</option></select></label>
-      <div class="menu-row"><button id="btn-sensors" type="button">REINTENTAR SENSORES</button></div>
-      <div class="menu-row main-action"><button id="btn-vr" type="button">ENTRAR EN VR</button></div>
-      <div class="menu-row"><button id="btn-reset" type="button">RESTABLECER</button></div>
-    </div>
-  </div>
-  <script src="js/camera.js"></script>
-  <script src="js/reticle.js"></script>
-  <script src="js/app.js"></script>
-  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
-</body>
-</html>
+<div id="orientation-warning">GIRA EL DISPOSITIVO<br>HORIZONTALMENTE</div>
+<main id="normal-view" class="camera-view"><video id="video-normal" class="camera-stream" autoplay playsinline muted></video><canvas id="canvas-normal" class="reticle-canvas"></canvas></main>
+<main id="vr-view" class="vr-container" hidden><section class="vr-eye" id="eye-left"><video class="camera-stream" autoplay playsinline muted></video><canvas class="reticle-canvas"></canvas></section><section class="vr-eye" id="eye-right"><video class="camera-stream" autoplay playsinline muted></video><canvas class="reticle-canvas"></canvas></section></main>
+<div id="sensor-status">SENSORES: INICIANDO</div><div id="permission-status">PREPARANDO SENSORES...</div>
+<div id="camera-menu"><button id="menu-toggle" type="button" aria-expanded="false">☰ CONTROL DE CÁMARA</button><div id="menu-panel" hidden>
+<div class="menu-title">CONFIGURACIÓN DE CÁMARA</div>
+<label>BRILLO <output id="brightness-value">260%</output><input id="brightness" type="range" min="100" max="400" value="260" step="5"></label>
+<label>CONTRASTE <output id="contrast-value">200%</output><input id="contrast" type="range" min="100" max="350" value="200" step="5"></label>
+<label>GANANCIA <output id="gain-value">120%</output><input id="gain" type="range" min="50" max="250" value="120" step="5"></label>
+<label>FILTRO<select id="filter-select"><option value="normal">NORMAL / NOCTURNO</option><option value="green">VERDE FÓSFORO</option><option value="thermal">TÉRMICO PSEUDO</option><option value="bw">BLANCO / NEGRO</option></select></label>
+<div class="menu-row"><button id="btn-sensors" type="button">REINTENTAR SENSORES</button></div><div class="menu-row main-action"><button id="btn-vr" type="button">ENTRAR EN VR</button></div><div class="menu-row"><button id="btn-reset" type="button">RESTABLECER</button></div>
+</div></div>
+<script src="js/camera.js"></script><script src="js/reticle.js"></script><script src="js/app.js"></script><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');</script>
+</body></html>
