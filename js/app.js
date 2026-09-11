@@ -2,61 +2,103 @@ document.addEventListener('DOMContentLoaded', async () => {
   const camera = new CameraController();
   const reticle = new ReticleController();
 
-  await camera.init();
-
   const modes = ['filter-green', 'filter-thermal', 'filter-bw'];
+  const modeNames = ['VERDE FÓSFORO', 'TÉRMICO PSEUDO', 'BLANCO/NEGRO'];
   let currentModeIdx = 0;
 
-  const updateHUD = () => {
-    const dist = reticle.calculateDistance();
-    document.querySelectorAll('.dist-val').forEach(el => el.textContent = dist);
-  };
+  const sensorStatus = document.getElementById('sensor-status');
+
+  function setSensorStatus(text) {
+    if (sensorStatus) sensorStatus.textContent = `SENSORES: ${text}`;
+  }
+
+  async function requestMotionPermission() {
+    try {
+      // iOS exige que la solicitud se realice desde una acción del usuario.
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        if (permission !== 'granted') {
+          setSensorStatus('PERMISO DENEGADO');
+          return false;
+        }
+      }
+
+      window.addEventListener('deviceorientation', handleOrientation, true);
+      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      setSensorStatus('ACTIVOS');
+      return true;
+    } catch (e) {
+      setSensorStatus('NO DISPONIBLES');
+      return false;
+    }
+  }
+
+  function handleOrientation(event) {
+    if (typeof event.webkitCompassHeading === 'number' && Number.isFinite(event.webkitCompassHeading)) {
+      window.__webkitCompassHeading = event.webkitCompassHeading;
+    }
+    reticle.setOrientation(event.alpha, event.beta, event.gamma, event.absolute);
+  }
+
+  try {
+    await camera.init();
+  } catch (e) {
+    setSensorStatus('CÁMARA NO DISPONIBLE');
+  }
 
   const applyMode = () => {
     document.body.className = modes[currentModeIdx];
-    const modeNames = ['VERDE FÓSFORO', 'TÉRMICO PSEUDO', 'BLANCO/NEGRO'];
     document.querySelectorAll('.mode-val').forEach(el => el.textContent = modeNames[currentModeIdx]);
   };
 
-  // Ciclo de renderizado de la retícula
+  // Renderizado continuo de retícula, horizonte y brújula.
   const loop = () => {
     reticle.draw();
     requestAnimationFrame(loop);
   };
   loop();
 
-  // Escuchar eventos de control (Pantalla / Teclado / Control Bluetooth)
+  document.getElementById('btn-sensors').addEventListener('click', requestMotionPermission);
+
   document.getElementById('btn-mode').addEventListener('click', () => {
     currentModeIdx = (currentModeIdx + 1) % modes.length;
     applyMode();
   });
 
-  document.getElementById('btn-size-up').addEventListener('click', () => {
-    reticle.knownTargetHeightMeters += 0.1;
-    updateHUD();
+  document.getElementById('btn-horizon').addEventListener('click', () => {
+    reticle.horizonEnabled = !reticle.horizonEnabled;
+    document.getElementById('btn-horizon').textContent = reticle.horizonEnabled
+      ? 'Horizonte ON'
+      : 'Horizonte OFF';
   });
 
-  document.getElementById('btn-size-down').addEventListener('click', () => {
-    if (reticle.knownTargetHeightMeters > 0.2) {
-      reticle.knownTargetHeightMeters -= 0.1;
-      updateHUD();
-    }
-  });
+  // Cualquier primer toque también intenta habilitar los sensores en dispositivos compatibles.
+  window.addEventListener('touchstart', () => {
+    if (!reticle.sensorReady) requestMotionPermission();
+  }, { once: true, passive: true });
 
-  // Atajos con mando Bluetooth en modo gamepad o teclado externo
+  // Atajos con mando Bluetooth / teclado externo.
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowUp') {
-      reticle.reticleMilSize = Math.max(10, reticle.reticleMilSize - 2);
-      updateHUD();
-    } else if (e.key === 'ArrowDown') {
-      reticle.reticleMilSize += 2;
-      updateHUD();
-    } else if (e.key === ' ') {
+    if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'h') {
+      reticle.horizonEnabled = !reticle.horizonEnabled;
+    } else if (e.key === ' ' || e.key.toLowerCase() === 'f') {
       currentModeIdx = (currentModeIdx + 1) % modes.length;
       applyMode();
+    } else if (e.key.toLowerCase() === 's') {
+      requestMotionPermission();
     }
   });
 
+  // Aviso de orientación del dispositivo.
+  const orientationWarning = document.getElementById('orientation-warning');
+  const updateOrientationWarning = () => {
+    const landscape = window.matchMedia('(orientation: landscape)').matches;
+    orientationWarning.style.display = landscape ? 'none' : 'flex';
+  };
+  window.addEventListener('resize', updateOrientationWarning);
+  window.addEventListener('orientationchange', updateOrientationWarning);
+  updateOrientationWarning();
+
   applyMode();
-  updateHUD();
 });
