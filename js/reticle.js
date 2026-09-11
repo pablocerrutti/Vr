@@ -30,14 +30,21 @@ class ReticleController {
     });
   }
 
+  getScreenAngle() {
+    if (screen.orientation && typeof screen.orientation.angle === 'number') {
+      return ((screen.orientation.angle % 360) + 360) % 360;
+    }
+    const legacy = typeof window.orientation === 'number' ? window.orientation : 0;
+    return ((legacy % 360) + 360) % 360;
+  }
+
   setOrientation(alpha, beta, gamma, absolute = false) {
     let heading = null;
 
     if (typeof window.__webkitCompassHeading === 'number' && Number.isFinite(window.__webkitCompassHeading)) {
       heading = window.__webkitCompassHeading;
     } else if (typeof alpha === 'number' && Number.isFinite(alpha)) {
-      const screenAngle = (screen.orientation && typeof screen.orientation.angle === 'number')
-        ? screen.orientation.angle : (window.orientation || 0);
+      const screenAngle = this.getScreenAngle();
       heading = (360 - alpha + screenAngle) % 360;
     }
 
@@ -45,8 +52,38 @@ class ReticleController {
       this.heading = this.normalize(heading);
     }
 
-    if (typeof beta === 'number') this.pitch = beta;
-    if (typeof gamma === 'number') this.roll = gamma;
+    // DeviceOrientation entrega beta/gamma tomando como referencia el teléfono
+    // en posición vertical. Como este visor se utiliza SIEMPRE en paisaje,
+    // transformamos los ejes según la rotación real de la pantalla para que
+    // el horizonte se comporte como un nivel de horizonte horizontal.
+    if (typeof beta === 'number' && typeof gamma === 'number') {
+      const angle = this.getScreenAngle();
+      let pitch;
+      let roll;
+
+      switch (angle) {
+        case 90:
+          pitch = gamma;
+          roll = -beta;
+          break;
+        case 270:
+          pitch = -gamma;
+          roll = beta;
+          break;
+        case 180:
+          pitch = -beta;
+          roll = -gamma;
+          break;
+        default:
+          pitch = beta;
+          roll = gamma;
+          break;
+      }
+
+      this.pitch = this.clamp(pitch, -90, 90);
+      this.roll = this.clamp(roll, -90, 90);
+    }
+
     this.sensorReady = true;
   }
 
@@ -56,8 +93,6 @@ class ReticleController {
     this.gpsSpeed = Number.isFinite(speed) ? speed : null;
     this.gpsCourse = Number.isFinite(course) ? this.normalize(course) : null;
 
-    // El rumbo GPS solo se usa como apoyo cuando hay desplazamiento real.
-    // No sustituye al magnetómetro estando quieto.
     if (this.gpsCourse !== null && this.gpsSpeed !== null && this.gpsSpeed >= 1.5) {
       if (this.heading === null) this.heading = this.gpsCourse;
     }
@@ -65,6 +100,10 @@ class ReticleController {
 
   normalize(value) {
     return (value % 360 + 360) % 360;
+  }
+
+  clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
   }
 
   shortestAngle(a, b) {
@@ -149,31 +188,50 @@ class ReticleController {
   drawHorizon(ctx, w, h, cx, cy) {
     if (!this.horizonEnabled) return;
 
+    // En paisaje, el horizonte es un NIVEL horizontal real. El roll ya está
+    // transformado en setOrientation() para los ejes de la pantalla apaisada.
     const rollRad = (this.roll || 0) * Math.PI / 180;
-    const pitchShift = Math.max(-h * 0.32, Math.min(h * 0.32, (this.pitch || 0) * h / 90));
+    const pitchShift = this.clamp((this.pitch || 0) * h / 90, -h * 0.42, h * 0.42);
     const y = cy + pitchShift;
-    const len = w * 0.38;
+    const len = Math.max(w * 0.42, Math.min(w * 0.68, 620));
 
     ctx.save();
     ctx.translate(cx, y);
     ctx.rotate(rollRad);
-    ctx.lineWidth = Math.abs(this.roll) < 1.5 ? 2.4 : 1.5;
-    ctx.globalAlpha = Math.abs(this.roll) < 1.5 ? 0.95 : 0.7;
+    ctx.lineWidth = Math.abs(this.roll) < 1.5 ? 2.8 : 1.7;
+    ctx.globalAlpha = Math.abs(this.roll) < 1.5 ? 0.98 : 0.78;
 
+    // Línea principal del horizonte.
     ctx.beginPath();
-    ctx.moveTo(-len / 2, 0); ctx.lineTo(len / 2, 0);
+    ctx.moveTo(-len / 2, 0);
+    ctx.lineTo(len / 2, 0);
     ctx.stroke();
 
+    // Marcas centrales de nivel, siempre orientadas junto con el horizonte.
     ctx.beginPath();
-    ctx.moveTo(-13, 0); ctx.lineTo(0, -6); ctx.lineTo(13, 0);
+    ctx.moveTo(-18, 0); ctx.lineTo(-5, 0);
+    ctx.moveTo(5, 0); ctx.lineTo(18, 0);
+    ctx.moveTo(0, -8); ctx.lineTo(0, 8);
     ctx.stroke();
     ctx.restore();
 
+    // Lectura de inclinación sin rotarla: permanece horizontal para facilitar
+    // la lectura dentro del visor VR.
     ctx.save();
-    ctx.font = 'bold 11px monospace';
-    ctx.globalAlpha = 0.9;
-    const levelText = Math.abs(this.roll) < 1.5 ? 'NIVELADO' : `INCLINADO ${Math.round(this.roll)}°`;
-    ctx.fillText(levelText, cx - 45, y - 9);
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.95;
+    const rollAbs = Math.abs(this.roll);
+    let levelText;
+    if (!this.sensorReady) {
+      levelText = 'NIVEL HORIZONTE — SENSOR OFF';
+    } else if (rollAbs < 1.5) {
+      levelText = 'HORIZONTE NIVELADO 0°';
+    } else {
+      const side = this.roll > 0 ? 'D' : 'I';
+      levelText = `HORIZONTE ${side} ${Math.round(rollAbs)}°`;
+    }
+    ctx.fillText(levelText, cx, Math.max(18, y - 12));
     ctx.restore();
   }
 
@@ -190,14 +248,12 @@ class ReticleController {
     ctx.shadowBlur = 5;
     ctx.lineWidth = 2;
 
-    // Fondo para mantener la escala legible sobre cualquier escena.
     ctx.fillStyle = 'rgba(0,0,0,0.62)';
     ctx.fillRect(left - 12, top - 8, span + 24, 72);
     ctx.strokeStyle = '#00ff00';
     ctx.strokeRect(left - 12, top - 8, span + 24, 72);
     ctx.fillStyle = '#00ff00';
 
-    // Escala reglada de 120° visibles: marcas cada 5°, mayores cada 15°.
     ctx.beginPath();
     ctx.moveTo(left, top + 25); ctx.lineTo(right, top + 25);
     ctx.stroke();
@@ -228,7 +284,6 @@ class ReticleController {
       }
     }
 
-    // Índice fijo: la dirección que apunta el teléfono queda exactamente aquí.
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(center, top - 2);
