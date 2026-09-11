@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vr-nocturno-v5';
+const CACHE_NAME = 'vr-nocturno-v6';
 const ASSETS = [
   './',
   './index.html',
