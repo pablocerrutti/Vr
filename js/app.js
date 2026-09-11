@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let cameraReady = false;
   let sensorsReady = false;
 
-  const filterNames = { normal:'NORMAL', green:'VERDE FÓSFORO', thermal:'TÉRMICO PSEUDO', bw:'BLANCO/NEGRO' };
   const status = text => { if (sensorStatus) sensorStatus.textContent = `SENSORES: ${text}`; };
   const permissionText = text => { if (permissionStatus) permissionStatus.textContent = text; };
 
@@ -34,15 +33,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function handleOrientation(event) {
-    if (Number.isFinite(event.webkitCompassHeading)) window.__webkitCompassHeading = event.webkitCompassHeading;
-    reticle.setOrientation(event.alpha, event.beta, event.gamma, event.absolute);
+    reticle.setOrientation(event.alpha, event.beta, event.gamma, event.absolute, event.webkitCompassHeading);
   }
 
   async function requestMotionPermission() {
     let compassGranted = true;
     try {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const result = await DeviceOrientationEvent.requestPermission(true);
+        const result = await DeviceOrientationEvent.requestPermission();
         compassGranted = result === 'granted';
       }
     } catch (_) {
@@ -143,17 +141,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('btn-vr').addEventListener('click', () => vrMode ? exitVR() : enterVR());
   document.getElementById('btn-sensors').addEventListener('click', requestMotionPermission);
-  document.getElementById('btn-horizon').addEventListener('click', () => {
-    reticle.horizonEnabled = !reticle.horizonEnabled;
-    document.getElementById('btn-horizon').textContent = reticle.horizonEnabled ? 'HORIZONTE ON' : 'HORIZONTE OFF';
-  });
   document.getElementById('btn-reset').addEventListener('click', () => {
     document.getElementById('brightness').value = 260;
     document.getElementById('contrast').value = 200;
     document.getElementById('gain').value = 120;
     document.getElementById('filter-select').value = 'normal';
-    reticle.horizonEnabled = true;
-    document.getElementById('btn-horizon').textContent = 'HORIZONTE ON';
     applyImageControls();
   });
 
@@ -170,16 +162,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const k = e.key.toLowerCase();
     if (k === 'v') vrMode ? exitVR() : enterVR();
     if (k === 'm') menuToggle.click();
-    if (k === 'h') document.getElementById('btn-horizon').click();
   });
 
   applyImageControls();
   updateLandscape();
   const loop = () => { reticle.draw(); requestAnimationFrame(loop); };
   loop();
-
-  // En el primer arranque se solicitan cámara, brújula/movimiento y ubicación.
-  // Los navegadores móviles pueden exigir interacción para sensores; por eso
-  // también queda disponible REINTENTAR SENSORES dentro del menú.
   await requestAllPermissions();
 });
