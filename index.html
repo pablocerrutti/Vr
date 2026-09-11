@@ -13,16 +13,25 @@
 </head>
 <body class="mode-normal">
   <div id="orientation-warning">GIRA EL DISPOSITIVO<br>HORIZONTALMENTE</div>
+
   <main id="normal-view" class="camera-view">
     <video id="video-normal" class="camera-stream" autoplay playsinline muted></video>
     <canvas id="canvas-normal" class="reticle-canvas"></canvas>
   </main>
+
   <main id="vr-view" class="vr-container" hidden>
-    <section class="vr-eye" id="eye-left"><video class="camera-stream" autoplay playsinline muted></video><canvas class="reticle-canvas"></canvas></section>
-    <section class="vr-eye" id="eye-right"><video class="camera-stream" autoplay playsinline muted></video><canvas class="reticle-canvas"></canvas></section>
+    <section class="vr-eye" id="eye-left">
+      <video class="camera-stream" autoplay playsinline muted></video>
+      <canvas class="reticle-canvas"></canvas>
+    </section>
+    <section class="vr-eye" id="eye-right">
+      <video class="camera-stream" autoplay playsinline muted></video>
+      <canvas class="reticle-canvas"></canvas>
+    </section>
   </main>
-  <div class="hud-overlay"><div>REF: <span class="ref-val">30 M</span></div><div>MODO: <span class="mode-val">NORMAL</span></div></div>
+
   <div id="sensor-status">SENSORES: ESPERANDO</div>
+
   <div id="camera-menu">
     <button id="menu-toggle" type="button" aria-expanded="false">☰ CONTROL DE CÁMARA</button>
     <div id="menu-panel" hidden>
@@ -38,7 +47,10 @@
       <div class="menu-row"><button id="btn-reset" type="button">RESTABLECER</button></div>
     </div>
   </div>
-  <script src="js/camera.js"></script><script src="js/reticle.js"></script><script src="js/app.js"></script>
+
+  <script src="js/camera.js"></script>
+  <script src="js/reticle.js"></script>
+  <script src="js/app.js"></script>
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>
