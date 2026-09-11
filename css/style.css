@@ -5,20 +5,18 @@ body{position:fixed;inset:0}
 .camera-stream{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(var(--brightness,260%)) contrast(var(--contrast,200%)) saturate(100%)}
 .reticle-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:5;pointer-events:none}
 .vr-container{display:flex;flex-direction:row}.vr-container .vr-eye{position:relative;inset:auto;width:50%;height:100%;flex:0 0 50%;overflow:hidden}.vr-container .vr-eye:first-child{border-right:1px solid rgba(0,255,0,.12)}
-/* VR Box: conserva la geometría de cada ojo sin deformar la imagen. */
-.mode-vr .camera-stream{object-fit:cover}
+/* VR Box: leve expansión digital del campo visual. No inventa imagen nueva; redistribuye
+   suavemente la imagen para reducir la sensación de "teleobjetivo" de cada ojo. */
+.mode-vr .camera-stream{object-fit:cover;transform:scaleX(1.055) scaleY(1.018);transform-origin:center center}
+.mode-vr .reticle-canvas{transform:none}
 .hud-overlay{display:none}
 #sensor-status{position:fixed;right:8px;bottom:6px;z-index:40;font-size:10px;font-weight:bold;padding:4px 7px;background:rgba(0,0,0,.72);border:1px solid rgba(0,255,0,.55);text-shadow:0 0 5px #00ff00;pointer-events:none}
 #permission-status{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:45;font-size:11px;font-weight:bold;padding:5px 9px;background:rgba(0,0,0,.72);border:1px solid rgba(0,255,0,.65);text-shadow:0 0 5px #00ff00;pointer-events:none;text-align:center}
 #orientation-warning{display:none;position:fixed;inset:0;z-index:100;background:#000;color:#00ff00;align-items:center;justify-content:center;text-align:center;font-size:20px;line-height:1.5;text-shadow:0 0 8px #00ff00}
 .mode-normal #normal-view{display:block}.mode-normal #vr-view{display:none}.mode-vr #normal-view{display:none}.mode-vr #vr-view{display:flex}[hidden]{display:none!important}
-
-/* Verde fósforo: imagen monocromática, mayor separación tonal y respuesta tipo intensificador. */
 body[data-filter="green"] .camera-stream{filter:brightness(var(--brightness,260%)) contrast(var(--contrast,200%)) grayscale(1) sepia(1) hue-rotate(55deg) saturate(3.2) brightness(1.08) contrast(1.18)}
 body[data-filter="thermal"] .camera-stream{filter:brightness(var(--brightness,260%)) contrast(var(--contrast,200%)) saturate(100%) invert(1) hue-rotate(180deg)}
 body[data-filter="bw"] .camera-stream{filter:brightness(var(--brightness,260%)) contrast(var(--contrast,200%)) saturate(0)}
-
-/* Menu desplegable abajo, fuera de la zona de la brújula */
 #camera-menu{position:fixed;right:8px;bottom:32px;z-index:50;width:min(285px,calc(100vw - 16px));font-size:11px}
 #menu-toggle{width:100%;padding:8px 11px;background:rgba(0,18,0,.90);color:#00ff00;border:1px solid #00ff00;border-radius:4px;font:inherit;text-align:left;text-shadow:0 0 4px #00ff00;cursor:pointer}
 #menu-panel{margin-top:4px;padding:9px;background:rgba(0,8,0,.95);border:1px solid #00ff00;border-radius:4px;box-shadow:0 0 12px rgba(0,255,0,.18);max-height:calc(100vh - 80px);overflow:auto}
