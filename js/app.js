@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const menuPanel = document.getElementById('menu-panel');
   const sensorStatus = document.getElementById('sensor-status');
   let vrMode = false;
+  let gpsWatchId = null;
 
   const filterNames = {
     normal: 'NORMAL', green: 'VERDE FÓSFORO', thermal: 'TÉRMICO PSEUDO', bw: 'BLANCO/NEGRO'
@@ -17,17 +18,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sensorStatus) sensorStatus.textContent = `SENSORES: ${text}`;
   };
 
+  function startGPS() {
+    if (!('geolocation' in navigator)) {
+      setSensorStatus('BRÚJULA ACTIVA / GPS NO DISPONIBLE');
+      return false;
+    }
+
+    if (gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+
+    gpsWatchId = navigator.geolocation.watchPosition(
+      position => {
+        const c = position.coords;
+        reticle.setGPS(c.accuracy, c.speed, c.heading);
+        const acc = Number.isFinite(c.accuracy) ? ` ±${Math.round(c.accuracy)}M` : '';
+        setSensorStatus(`BRÚJULA ACTIVA / GPS OK${acc}`);
+      },
+      () => setSensorStatus('BRÚJULA ACTIVA / GPS SIN SEÑAL'),
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+    );
+    return true;
+  }
+
   async function requestMotionPermission() {
+    let compassGranted = true;
+    let locationStarted = false;
+
     try {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        const permission = await DeviceOrientationEvent.requestPermission();
-        if (permission !== 'granted') { setSensorStatus('PERMISO DENEGADO'); return false; }
+        // true solicita orientación absoluta y acceso al magnetómetro cuando el navegador lo permite.
+        const permission = await DeviceOrientationEvent.requestPermission(true);
+        compassGranted = permission === 'granted';
       }
-      window.addEventListener('deviceorientation', handleOrientation, true);
-      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-      setSensorStatus('ACTIVOS');
-      return true;
-    } catch (_) { setSensorStatus('NO DISPONIBLES'); return false; }
+
+      if (compassGranted) {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        reticle.sensorReady = true;
+      }
+
+      locationStarted = startGPS();
+
+      if (compassGranted && locationStarted) {
+        setSensorStatus('BRÚJULA + GPS ACTIVOS');
+      } else if (compassGranted) {
+        setSensorStatus('BRÚJULA ACTIVA / GPS NO DISPONIBLE');
+      } else if (locationStarted) {
+        setSensorStatus('GPS ACTIVO / BRÚJULA DENEGADA');
+      } else {
+        setSensorStatus('PERMISOS NO CONCEDIDOS');
+      }
+
+      return compassGranted || locationStarted;
+    } catch (_) {
+      startGPS();
+      setSensorStatus('REVISAR PERMISOS DE BRÚJULA Y GPS');
+      return false;
+    }
   }
 
   function handleOrientation(event) {
@@ -85,7 +131,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSensorStatus('CÁMARA NO DISPONIBLE');
   }
 
-  // El mismo stream se muestra en la vista normal y en los dos ojos VR.
   const normalVideo = document.getElementById('video-normal');
   const vrVideos = document.querySelectorAll('#vr-view .camera-stream');
   if (camera.stream) {
